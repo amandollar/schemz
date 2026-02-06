@@ -1,0 +1,45 @@
+# Compiled class files
+*.class
+
+# Packages
+*.jar
+*.war
+*.ear
+
+# Maven
+/target/
+/dependency-reduced-pom.xml
+/release.properties
+/pom.xml.versionsBackup
+/pom.xml.next
+
+# Generated sources
+/generated-sources/
+/generated-test-sources/
+
+# Logs
+*.log
+
+# IDEs and editors
+/.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.env
+
+# Build folders
+/out/
+/build/
+
+# Misc
+logs/
+target-*/
