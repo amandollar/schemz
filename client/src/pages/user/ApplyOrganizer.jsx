@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { applicationAPI } from '../../services/api';
 import { Briefcase, Send } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 const ApplyOrganizer = () => {
   const [formData, setFormData] = useState({
     organization: '',
     designation: '',
     reason: '',
+    contactNumber: '',
   });
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
@@ -19,10 +21,15 @@ const ApplyOrganizer = () => {
     setLoading(true);
 
     try {
-      await applicationAPI.submitApplication(formData);
-      navigate('/user/dashboard');
+      const response = await applicationAPI.submitApplication(formData);
+      if (response.data.success) {
+        toast.success('Application submitted successfully!');
+        navigate('/user/dashboard');
+      }
     } catch (error) {
       console.error('Error submitting application:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to submit application. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -98,6 +105,26 @@ const ApplyOrganizer = () => {
             </p>
           </div>
 
+          {/* Contact Number */}
+          <div>
+            <label htmlFor="contactNumber" className="label">
+              Contact Number
+            </label>
+            <input
+              id="contactNumber"
+              type="tel"
+              name="contactNumber"
+              value={formData.contactNumber}
+              onChange={handleChange}
+              className="input"
+              placeholder="Enter your contact number"
+              required
+            />
+            <p className="mt-1.5 text-xs text-gov-600">
+              Phone number where we can reach you
+            </p>
+          </div>
+
           {/* Reason */}
           <div>
             <label htmlFor="reason" className="label">
@@ -111,9 +138,10 @@ const ApplyOrganizer = () => {
               className="input min-h-[120px] resize-y"
               placeholder="Explain why you want to become an organizer..."
               required
+              minLength={50}
             />
             <p className="mt-1.5 text-xs text-gov-600">
-              Describe your motivation and how you plan to contribute
+              Describe your motivation and how you plan to contribute (minimum 50 characters)
             </p>
           </div>
 
