@@ -81,17 +81,6 @@ const userSchema = new mongoose.Schema({
   profileImage: {
     type: String,
     default: ''
-  },
-  // Email verification fields
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
-  verificationToken: {
-    type: String
-  },
-  verificationTokenExpire: {
-    type: Date
   }
 }, {
   timestamps: true
@@ -109,17 +98,6 @@ userSchema.pre('save', async function(next) {
 // Method to compare password
 userSchema.methods.matchPassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
-};
-
-// Method to generate verification token
-userSchema.methods.generateVerificationToken = function() {
-  // Generate random 32 character token
-  const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  
-  this.verificationToken = token;
-  this.verificationTokenExpire = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
-  
-  return token;
 };
 
 const User = mongoose.model('User', userSchema);

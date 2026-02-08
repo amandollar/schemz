@@ -9,7 +9,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Auth Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
-import VerifyEmail from './pages/VerifyEmail';
 
 // User Pages
 import UserDashboard from './pages/user/Dashboard';
@@ -36,7 +35,7 @@ import AllApplications from './pages/admin/AllApplications';
 
 function AppContent() {
   const location = useLocation();
-  const hideNavbar = ['/login', '/register', '/', '/verify-email'].includes(location.pathname) || location.pathname.startsWith('/verify-email/');
+  const hideNavbar = ['/login', '/register', '/'].includes(location.pathname);
 
   return (
     <div className="min-h-screen">
@@ -45,7 +44,6 @@ function AppContent() {
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/" element={<Navigate to="/login" replace />} />
 
             {/* User Routes */}

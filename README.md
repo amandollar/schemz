@@ -48,7 +48,7 @@ The platform uses a sophisticated scoring algorithm to match users with schemes 
 ## ✨ Features
 
 ### 👤 User Features
-- ✅ User registration with email verification
+- ✅ User registration
 - ✅ Complete profile management
 - ✅ View all available schemes
 - ✅ Get personalized scheme matches based on profile
@@ -75,7 +75,6 @@ The platform uses a sophisticated scoring algorithm to match users with schemes 
 ### 🔧 Technical Features
 - ✅ JWT-based authentication
 - ✅ Role-based access control (RBAC)
-- ✅ Email verification system
 - ✅ File upload (profile images via Cloudinary, documents via Backblaze B2)
 - ✅ Responsive design with Tailwind CSS
 - ✅ Real-time notifications with toast messages
@@ -240,14 +239,14 @@ MONGODB_URI=mongodb://localhost:27017/schemz
 JWT_SECRET=your_jwt_secret_key_change_this_in_production
 JWT_EXPIRE=7d
 
-# Email Configuration (for email verification)
+# Email Configuration (optional - not currently used)
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASS=your-app-password
 EMAIL_FROM=noreply@schemz.com
 
-# Frontend URL (for email verification links)
+# Frontend URL
 FRONTEND_URL=http://localhost:3000
 
 # Cloudinary (for profile image uploads)
@@ -354,7 +353,7 @@ See `server/BACKBLAZE_SETUP.md` for detailed Backblaze setup instructions.
 - Apply to become an organizer
 
 **Workflow:**
-1. Register → Verify email → Login
+1. Register → Login (automatic)
 2. Complete profile → View matched schemes
 3. Apply to schemes → Track applications
 
@@ -471,12 +470,11 @@ All protected routes require `Authorization: Bearer <token>` header.
 ### Main Endpoints
 
 #### Authentication
-- `POST /auth/register` - Register new user
+- `POST /auth/register` - Register new user (returns token for auto-login)
 - `POST /auth/login` - Login user
 - `GET /auth/me` - Get current user
 - `PUT /auth/profile` - Update profile
 - `POST /auth/upload-profile-image` - Upload profile image
-- `GET /auth/verify-email/:token` - Verify email
 
 #### Schemes (Public)
 - `GET /schemes` - Get all approved schemes
@@ -560,7 +558,6 @@ curl http://localhost:5000/api/health
 - ✅ **JWT Authentication** - Secure token-based auth
 - ✅ **Password Hashing** - Bcrypt with salt rounds
 - ✅ **Role-Based Access Control** - User, Organizer, Admin roles
-- ✅ **Email Verification** - Required for account activation
 - ✅ **Input Validation** - Server-side validation
 - ✅ **Protected Routes** - Frontend route protection
 - ✅ **File Upload Validation** - Type and size checks

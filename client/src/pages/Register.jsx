@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
-import { Mail, CheckCircle, Shield } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Logo from '../components/Logo';
 
@@ -13,8 +12,7 @@ const Register = () => {
     role: 'user',
   });
   const [loading, setLoading] = useState(false);
-  const [registered, setRegistered] = useState(false);
-  const [registeredEmail, setRegisteredEmail] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,9 +22,24 @@ const Register = () => {
       const response = await authAPI.register(formData);
       
       if (response.data.success) {
-        setRegisteredEmail(formData.email);
-        setRegistered(true);
-        toast.success(response.data.message || 'Registration successful! Please check your email.');
+        toast.success(response.data.message || 'Registration successful!');
+        
+        // Automatically log in the user after registration
+        if (response.data.token) {
+          localStorage.setItem('token', response.data.token);
+          localStorage.setItem('user', JSON.stringify(response.data.data));
+          
+          // Redirect based on role
+          if (response.data.data.role === 'admin') {
+            navigate('/admin/dashboard');
+          } else if (response.data.data.role === 'organizer') {
+            navigate('/organizer/dashboard');
+          } else {
+            navigate('/user/dashboard');
+          }
+        } else {
+          navigate('/login');
+        }
       }
     } catch (error) {
       const message = error.response?.data?.message || 'Registration failed';
@@ -36,91 +49,12 @@ const Register = () => {
     }
   };
 
-  const handleResendVerification = async () => {
-    try {
-      await authAPI.resendVerification(registeredEmail);
-      toast.success('Verification email sent! Please check your inbox.');
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to resend verification email');
-    }
-  };
-
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
-
-  // Show success message after registration
-  if (registered) {
-    return (
-      <div className="min-h-screen bg-gov-100 flex flex-col">
-        {/* Header Bar */}
-        <div className="bg-white border-b border-gov-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-accent-600 rounded flex items-center justify-center">
-                <Shield className="text-white" size={24} />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-gov-900">Schemz Portal</h1>
-                <p className="text-xs text-gov-600">Government Scheme Management System</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Success Message */}
-        <div className="flex-1 flex items-center justify-center px-4 py-12">
-          <div className="w-full max-w-md">
-            <div className="bg-white rounded-lg shadow-medium border border-gov-200 p-8 text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="text-green-600" size={32} />
-              </div>
-              
-              <h2 className="text-2xl font-semibold text-gov-900 mb-2">
-                Registration Successful!
-              </h2>
-              
-              <p className="text-gov-700 mb-6">
-                We've sent a verification email to:
-              </p>
-              
-              <div className="bg-accent-50 border border-accent-200 rounded-lg p-4 mb-6">
-                <Mail className="text-accent-600 mx-auto mb-2" size={24} />
-                <p className="font-medium text-gov-900">{registeredEmail}</p>
-              </div>
-              
-              <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 text-left">
-                <p className="text-sm text-yellow-900 mb-2">
-                  <strong>Next Steps:</strong>
-                </p>
-                <ol className="text-sm text-yellow-800 space-y-1 list-decimal list-inside">
-                  <li>Check your email inbox</li>
-                  <li>Click the verification link</li>
-                  <li>Return to login page</li>
-                </ol>
-              </div>
-              
-              <div className="space-y-3">
-                <Link to="/login" className="btn-primary w-full block">
-                  Go to Login
-                </Link>
-                
-                <button
-                  onClick={handleResendVerification}
-                  className="text-sm text-accent-600 hover:text-accent-700 font-medium"
-                >
-                  Didn't receive email? Resend verification
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gov-100 flex">

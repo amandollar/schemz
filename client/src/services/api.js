@@ -51,8 +51,6 @@ export const authAPI = {
       },
     });
   },
-  resendVerification: (email) => api.post('/auth/resend-verification', { email }),
-  verifyEmail: (token) => api.get(`/auth/verify-email/${token}`),
 };
 
 // Scheme API (User)

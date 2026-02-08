@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
-import { Mail, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Logo from '../components/Logo';
 
@@ -12,8 +11,6 @@ const Login = () => {
     password: '',
   });
   const [loading, setLoading] = useState(false);
-  const [resendingEmail, setResendingEmail] = useState(false);
-  const [showVerificationError, setShowVerificationError] = useState(false);
   const { login, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -29,7 +26,6 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setShowVerificationError(false);
 
     const result = await login(formData);
     
@@ -42,34 +38,9 @@ const Login = () => {
       } else {
         navigate('/user/dashboard');
       }
-    } else {
-      // Check if error is about email verification
-      // Check both error message and response structure
-      const errorMessage = result.error?.toLowerCase() || '';
-      if (errorMessage.includes('verify') || errorMessage.includes('verification')) {
-        setShowVerificationError(true);
-      }
     }
     
     setLoading(false);
-  };
-
-  const handleResendVerification = async () => {
-    if (!formData.email) {
-      toast.error('Please enter your email address');
-      return;
-    }
-
-    setResendingEmail(true);
-    try {
-      await authAPI.resendVerification(formData.email);
-      toast.success('Verification email sent! Please check your inbox.');
-      setShowVerificationError(false);
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to resend verification email');
-    } finally {
-      setResendingEmail(false);
-    }
   };
 
   const handleChange = (e) => {
@@ -147,31 +118,6 @@ const Login = () => {
                 <h2 className="text-2xl font-semibold text-gov-900 mb-2">Sign In</h2>
                 <p className="text-sm text-gov-600">Enter your credentials to access your account</p>
               </div>
-
-              {/* Email Verification Alert */}
-              {showVerificationError && (
-                <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-r">
-                  <div className="flex items-start">
-                    <AlertCircle className="text-yellow-600 mt-0.5 mr-3 flex-shrink-0" size={20} />
-                    <div className="flex-1">
-                      <h3 className="text-sm font-semibold text-yellow-900 mb-1">
-                        Email Not Verified
-                      </h3>
-                      <p className="text-sm text-yellow-800 mb-3">
-                        Please verify your email before logging in. Check your inbox for the verification link.
-                      </p>
-                      <button
-                        onClick={handleResendVerification}
-                        disabled={resendingEmail}
-                        className="inline-flex items-center text-sm font-medium text-yellow-900 hover:text-yellow-700 disabled:opacity-50"
-                      >
-                        <Mail size={16} className="mr-1" />
-                        {resendingEmail ? 'Sending...' : 'Resend Verification Email'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
