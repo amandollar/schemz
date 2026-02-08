@@ -21,19 +21,31 @@ const schemeApplicationSchema = new mongoose.Schema({
   applicantDetails: {
     name: { type: String, required: true },
     email: { type: String, required: true },
-    phone: { type: String, required: true },
+    phone: { type: String, default: '' },
     dateOfBirth: { type: Date },
     age: { type: Number },
-    gender: { type: String, enum: ['Male', 'Female', 'Other'] },
-    category: { type: String, enum: ['General', 'OBC', 'SC', 'ST', 'EWS'] },
+    gender: { 
+      type: String, 
+      enum: ['Male', 'Female', 'Other']
+    },
+    category: { 
+      type: String, 
+      enum: ['General', 'OBC', 'SC', 'ST', 'EWS']
+    },
     religion: { type: String },
-    maritalStatus: { type: String, enum: ['Single', 'Married', 'Divorced', 'Widowed'] },
+    maritalStatus: { 
+      type: String, 
+      enum: ['Single', 'Married', 'Divorced', 'Widowed']
+    },
     state: { type: String },
     district: { type: String },
     education: { type: String },
     occupation: { type: String },
     income: { type: Number },
-    disability: { type: String, enum: ['None', 'Physical', 'Visual', 'Hearing', 'Mental', 'Multiple'] }
+    disability: { 
+      type: String, 
+      enum: ['None', 'Physical', 'Visual', 'Hearing', 'Mental', 'Multiple']
+    }
   },
   
   // Application-specific data

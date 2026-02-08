@@ -75,3 +75,57 @@ export const getMissingFields = (user) => {
 
   return missingFields;
 };
+
+/**
+ * Check if user profile has required fields for scheme application
+ * Required fields: name, email, phone, age, gender, category, state, education
+ * @param {Object} user - User object from context
+ * @returns {Object} - { isValid: boolean, missingFields: Array<string>, message: string }
+ */
+export const isProfileReadyForApplication = (user) => {
+  if (!user) {
+    return {
+      isValid: false,
+      missingFields: [],
+      message: 'User not found'
+    };
+  }
+
+  // Required fields for application
+  const requiredFields = {
+    name: 'Full Name',
+    email: 'Email Address',
+    phone: 'Phone Number',
+    age: 'Age',
+    gender: 'Gender',
+    category: 'Category',
+    state: 'State',
+    education: 'Education'
+  };
+
+  const missingFields = [];
+  
+  Object.keys(requiredFields).forEach(field => {
+    const value = user[field];
+    if (value === undefined || value === null || value === '') {
+      missingFields.push(requiredFields[field]);
+    }
+  });
+
+  const isValid = missingFields.length === 0;
+  
+  let message = '';
+  if (!isValid) {
+    if (missingFields.length === 1) {
+      message = `Please update your profile. Missing: ${missingFields[0]}`;
+    } else {
+      message = `Please complete your profile before applying. Missing: ${missingFields.join(', ')}`;
+    }
+  }
+
+  return {
+    isValid,
+    missingFields,
+    message
+  };
+};

@@ -9,6 +9,70 @@ export const submitApplication = async (req, res) => {
   try {
     const { schemeId, applicationData, applicantDetails } = req.body;
     
+    // Validate required fields
+    if (!schemeId) {
+      return res.status(400).json({ success: false, message: 'Scheme ID is required' });
+    }
+    
+    if (!applicationData || !applicantDetails) {
+      return res.status(400).json({ success: false, message: 'Application data and applicant details are required' });
+    }
+    
+    // Parse JSON strings safely
+    let parsedApplicantDetails;
+    let parsedApplicationData;
+    
+    try {
+      parsedApplicantDetails = typeof applicantDetails === 'string' 
+        ? JSON.parse(applicantDetails) 
+        : applicantDetails;
+      parsedApplicationData = typeof applicationData === 'string' 
+        ? JSON.parse(applicationData) 
+        : applicationData;
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid data format. Please try again.' 
+      });
+    }
+    
+    // Validate required applicant details for application
+    const requiredFields = {
+      name: 'Full Name',
+      email: 'Email Address',
+      phone: 'Phone Number',
+      age: 'Age',
+      gender: 'Gender',
+      category: 'Category',
+      state: 'State',
+      education: 'Education'
+    };
+    
+    const missingFields = [];
+    Object.keys(requiredFields).forEach(field => {
+      const value = parsedApplicantDetails[field];
+      if (!value || (typeof value === 'string' && value.trim() === '')) {
+        missingFields.push(requiredFields[field]);
+      }
+    });
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Please complete your profile before applying. Missing fields: ${missingFields.join(', ')}`,
+        missingFields
+      });
+    }
+    
+    // Validate required application data
+    if (!parsedApplicationData.purpose) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Purpose of application is required' 
+      });
+    }
+    
     // Check if scheme exists and is approved
     const scheme = await Scheme.findById(schemeId);
     if (!scheme) {
@@ -82,12 +146,32 @@ export const submitApplication = async (req, res) => {
       });
     }
     
+    // Clean up applicant details: convert empty strings to undefined for enum fields
+    // This prevents Mongoose validation errors for enum fields
+    const cleanedApplicantDetails = {
+      ...parsedApplicantDetails,
+      phone: parsedApplicantDetails.phone || '',
+      // Convert empty strings to undefined for enum fields
+      gender: parsedApplicantDetails.gender && parsedApplicantDetails.gender.trim() !== '' 
+        ? parsedApplicantDetails.gender 
+        : undefined,
+      category: parsedApplicantDetails.category && parsedApplicantDetails.category.trim() !== '' 
+        ? parsedApplicantDetails.category 
+        : undefined,
+      maritalStatus: parsedApplicantDetails.maritalStatus && parsedApplicantDetails.maritalStatus.trim() !== '' 
+        ? parsedApplicantDetails.maritalStatus 
+        : undefined,
+      disability: parsedApplicantDetails.disability && parsedApplicantDetails.disability.trim() !== '' 
+        ? parsedApplicantDetails.disability 
+        : undefined
+    };
+    
     // Create application
     const application = await SchemeApplication.create({
       user: req.user._id,
       scheme: schemeId,
-      applicantDetails: JSON.parse(applicantDetails),
-      applicationData: JSON.parse(applicationData),
+      applicantDetails: cleanedApplicantDetails,
+      applicationData: parsedApplicationData,
       documents
     });
     

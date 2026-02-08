@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
-import { X, Upload, FileText, AlertCircle } from 'lucide-react';
+import { X, Upload, FileText, AlertCircle, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { schemeApplicationAPI } from '../services/api';
 import { toast } from 'react-toastify';
+import { isProfileReadyForApplication } from '../utils/profileUtils';
 
 const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [profileCheck, setProfileCheck] = useState(null);
   const [formData, setFormData] = useState({
     purpose: '',
     accountNumber: '',
@@ -24,10 +28,11 @@ const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
     otherDocuments: []
   });
 
-  // Auto-fill applicant details from user profile
+  // Check profile completeness when modal opens
   useEffect(() => {
     if (user && isOpen) {
-      // Form data is already initialized
+      const check = isProfileReadyForApplication(user);
+      setProfileCheck(check);
     }
   }, [user, isOpen]);
 
@@ -84,8 +89,20 @@ const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
       return;
     }
     
+    // Check profile completeness
+    const profileValidation = isProfileReadyForApplication(user);
+    if (!profileValidation.isValid) {
+      toast.error(profileValidation.message);
+      return;
+    }
+    
     if (!files.marksheet) {
       toast.error('Marksheet/Educational certificate is required');
+      return;
+    }
+    
+    if (!formData.purpose || formData.purpose.trim().length === 0) {
+      toast.error('Please provide a purpose for your application');
       return;
     }
     
@@ -160,6 +177,71 @@ const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
   };
 
   if (!isOpen) return null;
+
+  // Show profile completion warning if profile is incomplete
+  if (profileCheck && !profileCheck.isValid) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg max-w-md w-full">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-gov-200 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gov-900">Profile Incomplete</h2>
+              <p className="text-sm text-gov-600 mt-1">Complete your profile to apply</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gov-400 hover:text-gov-600 transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-6">
+            <div className="flex items-start space-x-4 mb-6">
+              <div className="p-3 bg-yellow-100 rounded-full">
+                <AlertCircle className="text-yellow-600" size={24} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gov-900 mb-2">
+                  Complete Your Profile First
+                </h3>
+                <p className="text-gov-700 mb-4">
+                  To apply for schemes, please complete the following required fields in your profile:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gov-600 mb-6">
+                  {profileCheck.missingFields.map((field, index) => (
+                    <li key={index}>{field}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end space-x-3">
+              <button
+                onClick={onClose}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onClose();
+                  navigate('/user/profile');
+                }}
+                className="btn-primary inline-flex items-center space-x-2"
+              >
+                <User size={18} />
+                <span>Go to Profile</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
