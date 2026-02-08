@@ -10,30 +10,36 @@ const createTransporter = () => {
   // For development: Use Gmail or any SMTP service
   // For production: Use services like SendGrid, AWS SES, etc.
   
-  if (process.env.NODE_ENV === 'production') {
-    // Production email configuration
-    return nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: process.env.EMAIL_PORT,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-  } else {
-    // Development: Use Gmail (requires app password)
-    // Or use Ethereal for testing: https://ethereal.email/
-    return nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-      port: process.env.EMAIL_PORT || 587,
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-  }
+  const isProduction = process.env.NODE_ENV === 'production';
+  const port = parseInt(process.env.EMAIL_PORT || '587', 10);
+  
+  // Determine secure mode based on port
+  // Port 465 uses SSL/TLS directly, port 587 uses STARTTLS
+  const useSecure = port === 465 || process.env.EMAIL_SECURE === 'true';
+  
+  // Base configuration
+  const config = {
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: port,
+    secure: useSecure, // true for 465 (SSL), false for 587 (STARTTLS)
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    },
+    // Connection options to fix IPv6 issues in production
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 5000, // 5 seconds
+    socketTimeout: 10000, // 10 seconds
+    // Force IPv4 to avoid IPv6 connection issues (ENETUNREACH errors)
+    // This fixes the issue where production servers can't connect via IPv6
+    family: 4, // Use IPv4 only (4 = IPv4, 6 = IPv6, 0 = auto)
+    // TLS options
+    tls: {
+      rejectUnauthorized: false // Set to true in production with valid certs if needed
+    }
+  };
+
+  return nodemailer.createTransport(config);
 };
 
 /**
@@ -98,7 +104,15 @@ export const sendVerificationEmail = async ({ email, name, token }) => {
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Email sending failed:', error.message);
-    throw new Error('Failed to send verification email');
+    console.error('Error details:', {
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      host: process.env.EMAIL_HOST,
+      port: process.env.EMAIL_PORT
+    });
+    throw new Error(`Failed to send verification email: ${error.message}`);
   }
 };
 
@@ -173,6 +187,14 @@ export const sendWelcomeEmail = async ({ email, name }) => {
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Welcome email sending failed:', error.message);
+    console.error('Error details:', {
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      host: process.env.EMAIL_HOST,
+      port: process.env.EMAIL_PORT
+    });
     // Don't throw error for welcome email - it's not critical
     return { success: false, error: error.message };
   }
