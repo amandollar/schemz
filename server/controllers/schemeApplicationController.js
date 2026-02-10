@@ -1,6 +1,7 @@
 import SchemeApplication from '../models/SchemeApplication.js';
 import Scheme from '../models/Scheme.js';
 import { uploadDocument } from '../services/backblazeService.js';
+import mongoose from 'mongoose';
 
 // @desc    Submit a new scheme application
 // @route   POST /api/scheme-applications
@@ -83,18 +84,16 @@ export const submitApplication = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Scheme is not active for applications' });
     }
     
-    // Check if user already applied
-    const existingApplication = await SchemeApplication.findOne({
-      user: req.user._id,
-      scheme: schemeId
-    });
-    
-    if (existingApplication) {
-      return res.status(400).json({ success: false, message: 'You have already applied to this scheme' });
-    }
-    
-    // Upload documents to Cloudinary
+    // Upload documents first (before transaction to avoid holding transaction open during file uploads)
     const documents = {};
+    
+    // Check if files were uploaded
+    if (!req.files) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No files uploaded. Please upload required documents.' 
+      });
+    }
     
     try {
       if (req.files.marksheet && req.files.marksheet[0]) {
@@ -166,20 +165,60 @@ export const submitApplication = async (req, res) => {
         : undefined
     };
     
-    // Create application
-    const application = await SchemeApplication.create({
-      user: req.user._id,
-      scheme: schemeId,
-      applicantDetails: cleanedApplicantDetails,
-      applicationData: parsedApplicationData,
-      documents
-    });
+    // Create application atomically to prevent race conditions
+    // Use transaction to ensure atomic check-and-create
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Check if application already exists within transaction
+      const existingApplication = await SchemeApplication.findOne({
+        user: req.user._id,
+        scheme: schemeId
+      }).session(session);
+      
+      if (existingApplication) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ 
+          success: false, 
+          message: 'You have already applied to this scheme' 
+        });
+      }
+
+      // Create application within transaction
+      const application = await SchemeApplication.create([{
+        user: req.user._id,
+        scheme: schemeId,
+        applicantDetails: cleanedApplicantDetails,
+        applicationData: parsedApplicationData,
+        documents
+      }], { session });
+
+      // Commit transaction
+      await session.commitTransaction();
+      session.endSession();
     
-    res.status(201).json({
-      success: true,
-      message: 'Application submitted successfully',
-      data: application
-    });
+      res.status(201).json({
+        success: true,
+        message: 'Application submitted successfully',
+        data: application[0]
+      });
+    } catch (transactionError) {
+      // Rollback transaction on error
+      await session.abortTransaction();
+      session.endSession();
+      
+      // Check if error is due to duplicate key (race condition)
+      if (transactionError.code === 11000 || transactionError.message?.includes('duplicate')) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'You have already applied to this scheme' 
+        });
+      }
+      
+      throw transactionError;
+    }
   } catch (error) {
     console.error('Submit application error:', error);
     res.status(500).json({ success: false, message: 'Failed to submit application', error: error.message });
@@ -297,6 +336,11 @@ export const approveApplication = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
     
+    // Check if scheme was populated (scheme might have been deleted)
+    if (!application.scheme || typeof application.scheme === 'string') {
+      return res.status(404).json({ success: false, message: 'Scheme not found for this application' });
+    }
+    
     // If organizer, check if they own the scheme
     if (req.user.role === 'organizer' && application.scheme.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to approve this application' });
@@ -334,6 +378,11 @@ export const rejectApplication = async (req, res) => {
     
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+    
+    // Check if scheme was populated (scheme might have been deleted)
+    if (!application.scheme || typeof application.scheme === 'string') {
+      return res.status(404).json({ success: false, message: 'Scheme not found for this application' });
     }
     
     // If organizer, check if they own the scheme

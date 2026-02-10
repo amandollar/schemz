@@ -40,11 +40,19 @@ class EligibilityEngine {
       
       case 'in':
         // ruleValue should be an array
-        return Array.isArray(ruleValue) && ruleValue.includes(userValue);
+        if (!Array.isArray(ruleValue)) {
+          console.warn(`Rule operator 'in' requires an array value, but got ${typeof ruleValue}. Rule will not match.`);
+          return false;
+        }
+        return ruleValue.includes(userValue);
       
       case 'not in':
         // ruleValue should be an array
-        return Array.isArray(ruleValue) && !ruleValue.includes(userValue);
+        if (!Array.isArray(ruleValue)) {
+          console.warn(`Rule operator 'not in' requires an array value, but got ${typeof ruleValue}. Rule will not match.`);
+          return false;
+        }
+        return !ruleValue.includes(userValue);
       
       default:
         return false;

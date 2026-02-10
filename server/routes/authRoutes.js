@@ -27,10 +27,34 @@ const upload = multer({
   }
 });
 
+// Multer error handler middleware
+const handleMulterError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: 'File size too large. Maximum size is 5MB.'
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: `File upload error: ${err.message}`
+    });
+  }
+  if (err) {
+    // Handle other multer-related errors (e.g., fileFilter errors)
+    return res.status(400).json({
+      success: false,
+      message: err.message || 'File upload error'
+    });
+  }
+  next();
+};
+
 router.post('/register', register);
 router.post('/login', login);
 router.get('/me', protect, getMe);
-router.post('/upload-profile-image', protect, upload.single('image'), uploadProfileImage);
+router.post('/upload-profile-image', protect, upload.single('image'), handleMulterError, uploadProfileImage);
 router.put('/profile', protect, updateProfile);
 
 export default router;

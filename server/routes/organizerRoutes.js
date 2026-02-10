@@ -7,6 +7,7 @@ import {
   deleteScheme
 } from '../controllers/organizerController.js';
 import { protect, authorize } from '../middleware/auth.js';
+import { validateObjectId } from '../middleware/validateObjectId.js';
 
 const router = express.Router();
 
@@ -16,8 +17,8 @@ router.use(authorize('organizer'));
 
 router.post('/scheme', createScheme);
 router.get('/schemes', getOrganizerSchemes);
-router.put('/scheme/:id', updateScheme);
-router.post('/scheme/:id/submit', submitScheme);
-router.delete('/scheme/:id', deleteScheme);
+router.put('/scheme/:id', validateObjectId('id'), updateScheme);
+router.post('/scheme/:id/submit', validateObjectId('id'), submitScheme);
+router.delete('/scheme/:id', validateObjectId('id'), deleteScheme);
 
 export default router;

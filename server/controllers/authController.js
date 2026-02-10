@@ -101,7 +101,7 @@ export const login = async (req, res) => {
  */
 export const getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
     
     if (!user) {
       return res.status(404).json({
@@ -149,7 +149,7 @@ export const uploadProfileImage = async (req, res) => {
 
     // Update user profile with new image URL
     const user = await User.findByIdAndUpdate(
-      req.user.id,
+      req.user._id,
       { profileImage: imageUrl },
       { new: true, runValidators: true }
     );
@@ -202,7 +202,7 @@ export const updateProfile = async (req, res) => {
     );
 
     const user = await User.findByIdAndUpdate(
-      req.user.id,
+      req.user._id,
       fieldsToUpdate,
       { new: true, runValidators: true }
     );

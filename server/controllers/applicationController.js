@@ -19,7 +19,7 @@ export const submitOrganizerApplication = async (req, res) => {
 
     // Check if user already has a pending application
     const existingApplication = await OrganizerApplication.findOne({
-      user: req.user.id,
+      user: req.user._id,
       status: 'pending'
     });
 
@@ -30,7 +30,7 @@ export const submitOrganizerApplication = async (req, res) => {
     }
 
     const application = await OrganizerApplication.create({
-      user: req.user.id,
+      user: req.user._id,
       organization,
       designation,
       reason,
@@ -59,7 +59,7 @@ export const submitOrganizerApplication = async (req, res) => {
  */
 export const getMyApplications = async (req, res) => {
   try {
-    const applications = await OrganizerApplication.find({ user: req.user.id })
+    const applications = await OrganizerApplication.find({ user: req.user._id })
       .populate('reviewedBy', 'name email')
       .sort('-createdAt');
 
@@ -84,7 +84,7 @@ export const getMyApplications = async (req, res) => {
 export const getApplicationStatus = async (req, res) => {
   try {
     const application = await OrganizerApplication.findOne({ 
-      user: req.user.id 
+      user: req.user._id 
     })
     .sort('-createdAt')
     .populate('reviewedBy', 'name email');

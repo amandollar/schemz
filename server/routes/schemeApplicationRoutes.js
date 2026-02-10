@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { protect, authorize } from '../middleware/auth.js';
+import { validateObjectId } from '../middleware/validateObjectId.js';
 import {
   submitApplication,
   getMyApplications,
@@ -32,6 +33,42 @@ const upload = multer({
   }
 });
 
+// Multer error handler middleware
+const handleMulterError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: 'File size too large. Maximum size is 5MB.'
+      });
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({
+        success: false,
+        message: 'Too many files uploaded.'
+      });
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Unexpected file field.'
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: `File upload error: ${err.message}`
+    });
+  }
+  if (err) {
+    // Handle other multer-related errors (e.g., fileFilter errors)
+    return res.status(400).json({
+      success: false,
+      message: err.message || 'File upload error'
+    });
+  }
+  next();
+};
+
 // User routes
 router.post(
   '/',
@@ -42,16 +79,17 @@ router.post(
     { name: 'categoryCertificate', maxCount: 1 },
     { name: 'otherDocuments', maxCount: 5 }
   ]),
+  handleMulterError,
   submitApplication
 );
 
 router.get('/my-applications', protect, getMyApplications);
-router.get('/check/:schemeId', protect, checkApplication);
+router.get('/check/:schemeId', protect, validateObjectId('schemeId'), checkApplication);
 
 // Organizer/Admin routes
-router.get('/scheme/:schemeId', protect, authorize('organizer', 'admin'), getSchemeApplications);
+router.get('/scheme/:schemeId', protect, authorize('organizer', 'admin'), validateObjectId('schemeId'), getSchemeApplications);
 router.get('/', protect, authorize('admin'), getAllApplications);
-router.patch('/:id/approve', protect, authorize('organizer', 'admin'), approveApplication);
-router.patch('/:id/reject', protect, authorize('organizer', 'admin'), rejectApplication);
+router.patch('/:id/approve', protect, authorize('organizer', 'admin'), validateObjectId('id'), approveApplication);
+router.patch('/:id/reject', protect, authorize('organizer', 'admin'), validateObjectId('id'), rejectApplication);
 
 export default router;

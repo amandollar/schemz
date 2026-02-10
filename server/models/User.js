@@ -72,8 +72,9 @@ const userSchema = new mongoose.Schema({
     enum: ['Hindu', 'Muslim', 'Christian', 'Sikh', 'Buddhist', 'Jain', 'Other', 'Prefer not to say']
   },
   disability: {
-    type: Boolean,
-    default: false
+    type: String,
+    enum: ['None', 'Physical', 'Visual', 'Hearing', 'Mental', 'Multiple'],
+    default: 'None'
   },
   occupation: {
     type: String

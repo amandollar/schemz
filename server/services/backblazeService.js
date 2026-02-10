@@ -8,7 +8,7 @@ const b2 = new B2({
   applicationKey: process.env.B2_APPLICATION_KEY,
 });
 
-let authorized = false;
+let authPromise = null; // Promise-based lock to prevent race conditions
 let bucketId = null;
 let downloadUrl = null; // Native B2 download URL from authorization
 
@@ -17,34 +17,42 @@ let downloadUrl = null; // Native B2 download URL from authorization
  * @returns {Promise<void>}
  */
 const authorizeB2 = async () => {
-  if (!authorized) {
-    try {
-      const response = await b2.authorize();
-      
-      // Store the downloadUrl from authorization response
-      // Format: https://f{number}.backblazeb2.com
-      downloadUrl = response.data.downloadUrl;
-      
-      // Get bucket ID from bucket name
-      const bucketName = process.env.B2_BUCKET_NAME;
-      if (bucketName) {
-        const { data: buckets } = await b2.listBuckets();
-        const bucket = buckets.buckets.find(b => b.bucketName === bucketName);
-        if (bucket) {
-          bucketId = bucket.bucketId;
+  // If authorization is already in progress or completed, wait for it
+  if (!authPromise) {
+    authPromise = (async () => {
+      try {
+        const response = await b2.authorize();
+        
+        // Store the downloadUrl from authorization response
+        // Format: https://f{number}.backblazeb2.com
+        downloadUrl = response.data.downloadUrl;
+        
+        // Get bucket ID from bucket name
+        const bucketName = process.env.B2_BUCKET_NAME;
+        if (bucketName) {
+          const { data: buckets } = await b2.listBuckets();
+          const bucket = buckets.buckets.find(b => b.bucketName === bucketName);
+          if (bucket) {
+            bucketId = bucket.bucketId;
+          } else {
+            throw new Error(`Bucket "${bucketName}" not found`);
+          }
         } else {
-          throw new Error(`Bucket "${bucketName}" not found`);
+          throw new Error('B2_BUCKET_NAME is not set in environment variables');
         }
-      } else {
-        throw new Error('B2_BUCKET_NAME is not set in environment variables');
+        
+        return true;
+      } catch (error) {
+        // Reset promise on error so retry is possible
+        authPromise = null;
+        console.error('Backblaze B2 authorization error:', error);
+        throw new Error(`Failed to authorize with Backblaze B2: ${error.message}`);
       }
-      
-      authorized = true;
-    } catch (error) {
-      console.error('Backblaze B2 authorization error:', error);
-      throw new Error(`Failed to authorize with Backblaze B2: ${error.message}`);
-    }
+    })();
   }
+  
+  // Wait for authorization to complete
+  await authPromise;
 };
 
 /**

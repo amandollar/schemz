@@ -15,7 +15,7 @@ export const createScheme = async (req, res) => {
       benefits,
       ministry,
       rules: rules || [],
-      createdBy: req.user.id,
+      createdBy: req.user._id,
       status: 'draft'
     });
 
@@ -38,7 +38,7 @@ export const createScheme = async (req, res) => {
  */
 export const getOrganizerSchemes = async (req, res) => {
   try {
-    const schemes = await Scheme.find({ createdBy: req.user.id })
+    const schemes = await Scheme.find({ createdBy: req.user._id })
       .sort('-createdAt');
 
     res.status(200).json({
@@ -68,7 +68,7 @@ export const updateScheme = async (req, res) => {
     }
 
     // Check ownership
-    if (scheme.createdBy.toString() !== req.user.id) {
+    if (scheme.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to update this scheme' });
     }
 
@@ -113,7 +113,7 @@ export const submitScheme = async (req, res) => {
     }
 
     // Check ownership
-    if (scheme.createdBy.toString() !== req.user.id) {
+    if (scheme.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -154,7 +154,7 @@ export const deleteScheme = async (req, res) => {
     }
 
     // Check ownership
-    if (scheme.createdBy.toString() !== req.user.id) {
+    if (scheme.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 

@@ -1,6 +1,7 @@
 import Scheme from '../models/Scheme.js';
 import OrganizerApplication from '../models/OrganizerApplication.js';
 import User from '../models/User.js';
+import mongoose from 'mongoose';
 
 /**
  * @desc    Get all pending schemes
@@ -76,7 +77,7 @@ export const approveScheme = async (req, res) => {
 
     scheme.status = 'approved';
     scheme.active = true;
-    scheme.approvedBy = req.user.id;
+    scheme.approvedBy = req.user._id;
     scheme.remarks = req.body.remarks || '';
     
     await scheme.save();
@@ -257,22 +258,38 @@ export const approveApplication = async (req, res) => {
       });
     }
 
-    user.role = 'organizer';
-    await user.save();
+    // Use transaction to ensure atomicity
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // Update application status
-    application.status = 'approved';
-    application.reviewedBy = req.user.id;
-    application.reviewedAt = new Date();
-    application.remarks = req.body.remarks || 'Application approved';
-    
-    await application.save();
+    try {
+      // Update user role to organizer
+      user.role = 'organizer';
+      await user.save({ session });
 
-    res.status(200).json({
-      success: true,
-      message: 'User promoted to organizer successfully',
-      data: application
-    });
+      // Update application status
+      application.status = 'approved';
+      application.reviewedBy = req.user._id;
+      application.reviewedAt = new Date();
+      application.remarks = req.body.remarks || 'Application approved';
+      
+      await application.save({ session });
+
+      // Commit transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(200).json({
+        success: true,
+        message: 'User promoted to organizer successfully',
+        data: application
+      });
+    } catch (error) {
+      // Rollback transaction on error
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
   } catch (error) {
     res.status(500).json({ 
       success: false, 
@@ -309,7 +326,7 @@ export const rejectApplication = async (req, res) => {
     }
 
     application.status = 'rejected';
-    application.reviewedBy = req.user.id;
+    application.reviewedBy = req.user._id;
     application.reviewedAt = new Date();
     application.remarks = remarks;
     
