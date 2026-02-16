@@ -24,9 +24,9 @@ export const createScheme = async (req, res) => {
       data: scheme
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -47,9 +47,9 @@ export const getOrganizerSchemes = async (req, res) => {
       data: schemes
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -74,8 +74,8 @@ export const updateScheme = async (req, res) => {
 
     // Only allow updates if draft or rejected
     if (!['draft', 'rejected'].includes(scheme.status)) {
-      return res.status(400).json({ 
-        message: 'Cannot update scheme in current status' 
+      return res.status(400).json({
+        message: 'Cannot update scheme in current status'
       });
     }
 
@@ -92,9 +92,9 @@ export const updateScheme = async (req, res) => {
       data: scheme
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -119,8 +119,8 @@ export const submitScheme = async (req, res) => {
 
     // Only allow submission if draft or rejected
     if (!['draft', 'rejected'].includes(scheme.status)) {
-      return res.status(400).json({ 
-        message: 'Scheme already submitted or approved' 
+      return res.status(400).json({
+        message: 'Scheme already submitted or approved'
       });
     }
 
@@ -133,9 +133,9 @@ export const submitScheme = async (req, res) => {
       data: scheme
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -160,8 +160,8 @@ export const deleteScheme = async (req, res) => {
 
     // Only allow deletion if draft
     if (scheme.status !== 'draft') {
-      return res.status(400).json({ 
-        message: 'Cannot delete scheme that has been submitted' 
+      return res.status(400).json({
+        message: 'Cannot delete scheme that has been submitted'
       });
     }
 
@@ -172,9 +172,9 @@ export const deleteScheme = async (req, res) => {
       message: 'Scheme deleted'
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
