@@ -9,35 +9,35 @@ import mongoose from 'mongoose';
 export const submitApplication = async (req, res) => {
   try {
     const { schemeId, applicationData, applicantDetails } = req.body;
-    
+
     // Validate required fields
     if (!schemeId) {
       return res.status(400).json({ success: false, message: 'Scheme ID is required' });
     }
-    
+
     if (!applicationData || !applicantDetails) {
       return res.status(400).json({ success: false, message: 'Application data and applicant details are required' });
     }
-    
+
     // Parse JSON strings safely
     let parsedApplicantDetails;
     let parsedApplicationData;
-    
+
     try {
-      parsedApplicantDetails = typeof applicantDetails === 'string' 
-        ? JSON.parse(applicantDetails) 
+      parsedApplicantDetails = typeof applicantDetails === 'string'
+        ? JSON.parse(applicantDetails)
         : applicantDetails;
-      parsedApplicationData = typeof applicationData === 'string' 
-        ? JSON.parse(applicationData) 
+      parsedApplicationData = typeof applicationData === 'string'
+        ? JSON.parse(applicationData)
         : applicationData;
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid data format. Please try again.' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid data format. Please try again.'
       });
     }
-    
+
     // Validate required applicant details for application
     const requiredFields = {
       name: 'Full Name',
@@ -49,7 +49,7 @@ export const submitApplication = async (req, res) => {
       state: 'State',
       education: 'Education'
     };
-    
+
     const missingFields = [];
     Object.keys(requiredFields).forEach(field => {
       const value = parsedApplicantDetails[field];
@@ -57,80 +57,80 @@ export const submitApplication = async (req, res) => {
         missingFields.push(requiredFields[field]);
       }
     });
-    
+
     if (missingFields.length > 0) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: `Please complete your profile before applying. Missing fields: ${missingFields.join(', ')}`,
         missingFields
       });
     }
-    
+
     // Validate required application data
     if (!parsedApplicationData.purpose) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Purpose of application is required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Purpose of application is required'
       });
     }
-    
+
     // Check if scheme exists and is approved
     const scheme = await Scheme.findById(schemeId);
     if (!scheme) {
       return res.status(404).json({ success: false, message: 'Scheme not found' });
     }
-    
+
     if (scheme.status !== 'approved') {
       return res.status(400).json({ success: false, message: 'Scheme is not active for applications' });
     }
-    
+
     // Upload documents first (before transaction to avoid holding transaction open during file uploads)
     const documents = {};
-    
+
     // Check if files were uploaded
     if (!req.files) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No files uploaded. Please upload required documents.' 
+      return res.status(400).json({
+        success: false,
+        message: 'No files uploaded. Please upload required documents.'
       });
     }
-    
+
     try {
       if (req.files.marksheet && req.files.marksheet[0]) {
         const file = req.files.marksheet[0];
         documents.marksheet = await uploadDocument(
-          file.buffer, 
+          file.buffer,
           'marksheets',
           file.originalname || 'marksheet.pdf'
         );
       } else {
         return res.status(400).json({ success: false, message: 'Marksheet is required' });
       }
-      
+
       if (req.files.incomeCertificate && req.files.incomeCertificate[0]) {
         const file = req.files.incomeCertificate[0];
         documents.incomeCertificate = await uploadDocument(
-          file.buffer, 
+          file.buffer,
           'certificates',
           file.originalname || 'income-certificate.pdf'
         );
       }
-      
+
       if (req.files.categoryCertificate && req.files.categoryCertificate[0]) {
         const file = req.files.categoryCertificate[0];
         documents.categoryCertificate = await uploadDocument(
-          file.buffer, 
+          file.buffer,
           'certificates',
           file.originalname || 'category-certificate.pdf'
         );
       }
-      
+
       if (req.files.otherDocuments && req.files.otherDocuments.length > 0) {
         documents.otherDocuments = await Promise.all(
           req.files.otherDocuments.map(async (file) => ({
             name: file.originalname || 'document',
             url: await uploadDocument(
-              file.buffer, 
+              file.buffer,
               'other-documents',
               file.originalname || 'document.pdf'
             )
@@ -139,85 +139,72 @@ export const submitApplication = async (req, res) => {
       }
     } catch (uploadError) {
       console.error('Document upload error:', uploadError);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Failed to upload documents. Please try again.' 
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to upload documents. Please try again.'
       });
     }
-    
+
     // Clean up applicant details: convert empty strings to undefined for enum fields
     // This prevents Mongoose validation errors for enum fields
     const cleanedApplicantDetails = {
       ...parsedApplicantDetails,
       phone: parsedApplicantDetails.phone || '',
       // Convert empty strings to undefined for enum fields
-      gender: parsedApplicantDetails.gender && parsedApplicantDetails.gender.trim() !== '' 
-        ? parsedApplicantDetails.gender 
+      gender: parsedApplicantDetails.gender && parsedApplicantDetails.gender.trim() !== ''
+        ? parsedApplicantDetails.gender
         : undefined,
-      category: parsedApplicantDetails.category && parsedApplicantDetails.category.trim() !== '' 
-        ? parsedApplicantDetails.category 
+      category: parsedApplicantDetails.category && parsedApplicantDetails.category.trim() !== ''
+        ? parsedApplicantDetails.category
         : undefined,
-      maritalStatus: parsedApplicantDetails.maritalStatus && parsedApplicantDetails.maritalStatus.trim() !== '' 
-        ? parsedApplicantDetails.maritalStatus 
+      maritalStatus: parsedApplicantDetails.maritalStatus && parsedApplicantDetails.maritalStatus.trim() !== ''
+        ? parsedApplicantDetails.maritalStatus
         : undefined,
-      disability: parsedApplicantDetails.disability && parsedApplicantDetails.disability.trim() !== '' 
-        ? parsedApplicantDetails.disability 
+      disability: parsedApplicantDetails.disability && parsedApplicantDetails.disability.trim() !== ''
+        ? parsedApplicantDetails.disability
         : undefined
     };
-    
+
     // Create application atomically to prevent race conditions
     // Use transaction to ensure atomic check-and-create
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
-      // Check if application already exists within transaction
+      // Check if application already exists
       const existingApplication = await SchemeApplication.findOne({
         user: req.user._id,
         scheme: schemeId
-      }).session(session);
-      
+      });
+
       if (existingApplication) {
-        await session.abortTransaction();
-        session.endSession();
-        return res.status(400).json({ 
-          success: false, 
-          message: 'You have already applied to this scheme' 
+        return res.status(400).json({
+          success: false,
+          message: 'You have already applied to this scheme'
         });
       }
 
-      // Create application within transaction
-      const application = await SchemeApplication.create([{
+      // Create application
+      const application = await SchemeApplication.create({
         user: req.user._id,
         scheme: schemeId,
         applicantDetails: cleanedApplicantDetails,
         applicationData: parsedApplicationData,
         documents
-      }], { session });
+      });
 
-      // Commit transaction
-      await session.commitTransaction();
-      session.endSession();
-    
       res.status(201).json({
         success: true,
         message: 'Application submitted successfully',
-        data: application[0]
+        data: application
       });
-    } catch (transactionError) {
-      // Rollback transaction on error
-      await session.abortTransaction();
-      session.endSession();
-      
+    } catch (error) {
       // Check if error is due to duplicate key (race condition)
-      if (transactionError.code === 11000 || transactionError.message?.includes('duplicate')) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'You have already applied to this scheme' 
+      if (error.code === 11000 || error.message?.includes('duplicate')) {
+        return res.status(400).json({
+          success: false,
+          message: 'You have already applied to this scheme'
         });
       }
-      
-      throw transactionError;
+
+      throw error;
     }
   } catch (error) {
     console.error('Submit application error:', error);
@@ -233,7 +220,7 @@ export const getMyApplications = async (req, res) => {
     const applications = await SchemeApplication.find({ user: req.user._id })
       .populate('scheme', 'name description benefits ministry')
       .sort('-createdAt');
-    
+
     res.json({
       success: true,
       data: applications
@@ -250,12 +237,12 @@ export const getMyApplications = async (req, res) => {
 export const checkApplication = async (req, res) => {
   try {
     const { schemeId } = req.params;
-    
+
     const application = await SchemeApplication.findOne({
       user: req.user._id,
       scheme: schemeId
     });
-    
+
     res.json({
       success: true,
       hasApplied: !!application,
@@ -273,22 +260,22 @@ export const checkApplication = async (req, res) => {
 export const getSchemeApplications = async (req, res) => {
   try {
     const { schemeId } = req.params;
-    
+
     // Check if scheme exists
     const scheme = await Scheme.findById(schemeId);
     if (!scheme) {
       return res.status(404).json({ success: false, message: 'Scheme not found' });
     }
-    
+
     // If organizer, check if they own the scheme
     if (req.user.role === 'organizer' && scheme.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to view these applications' });
     }
-    
+
     const applications = await SchemeApplication.find({ scheme: schemeId })
       .populate('user', 'name email')
       .sort('-createdAt');
-    
+
     res.json({
       success: true,
       data: applications
@@ -305,16 +292,16 @@ export const getSchemeApplications = async (req, res) => {
 export const getAllApplications = async (req, res) => {
   try {
     const { status, schemeId } = req.query;
-    
+
     const filter = {};
     if (status) filter.status = status;
     if (schemeId) filter.scheme = schemeId;
-    
+
     const applications = await SchemeApplication.find(filter)
       .populate('user', 'name email')
       .populate('scheme', 'name ministry')
       .sort('-createdAt');
-    
+
     res.json({
       success: true,
       data: applications
@@ -331,27 +318,27 @@ export const getAllApplications = async (req, res) => {
 export const approveApplication = async (req, res) => {
   try {
     const application = await SchemeApplication.findById(req.params.id).populate('scheme');
-    
+
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
-    
+
     // Check if scheme was populated (scheme might have been deleted)
     if (!application.scheme || typeof application.scheme === 'string') {
       return res.status(404).json({ success: false, message: 'Scheme not found for this application' });
     }
-    
+
     // If organizer, check if they own the scheme
     if (req.user.role === 'organizer' && application.scheme.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to approve this application' });
     }
-    
+
     application.status = 'approved';
     application.reviewedBy = req.user._id;
     application.reviewedAt = new Date();
-    
+
     await application.save();
-    
+
     res.json({
       success: true,
       message: 'Application approved successfully',
@@ -369,34 +356,34 @@ export const approveApplication = async (req, res) => {
 export const rejectApplication = async (req, res) => {
   try {
     const { reason } = req.body;
-    
+
     if (!reason) {
       return res.status(400).json({ success: false, message: 'Rejection reason is required' });
     }
-    
+
     const application = await SchemeApplication.findById(req.params.id).populate('scheme');
-    
+
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
-    
+
     // Check if scheme was populated (scheme might have been deleted)
     if (!application.scheme || typeof application.scheme === 'string') {
       return res.status(404).json({ success: false, message: 'Scheme not found for this application' });
     }
-    
+
     // If organizer, check if they own the scheme
     if (req.user.role === 'organizer' && application.scheme.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to reject this application' });
     }
-    
+
     application.status = 'rejected';
     application.reviewedBy = req.user._id;
     application.reviewedAt = new Date();
     application.rejectionReason = reason;
-    
+
     await application.save();
-    
+
     res.json({
       success: true,
       message: 'Application rejected',
