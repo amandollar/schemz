@@ -20,9 +20,9 @@ export const getPendingSchemes = async (req, res) => {
       data: schemes
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -35,9 +35,9 @@ export const getPendingSchemes = async (req, res) => {
 export const getAllSchemesAdmin = async (req, res) => {
   try {
     const { status } = req.query;
-    
+
     const filter = status ? { status } : {};
-    
+
     const schemes = await Scheme.find(filter)
       .populate('createdBy', 'name email')
       .populate('approvedBy', 'name email')
@@ -49,9 +49,9 @@ export const getAllSchemesAdmin = async (req, res) => {
       data: schemes
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -70,8 +70,8 @@ export const approveScheme = async (req, res) => {
     }
 
     if (scheme.status !== 'pending') {
-      return res.status(400).json({ 
-        message: 'Only pending schemes can be approved' 
+      return res.status(400).json({
+        message: 'Only pending schemes can be approved'
       });
     }
 
@@ -79,7 +79,7 @@ export const approveScheme = async (req, res) => {
     scheme.active = true;
     scheme.approvedBy = req.user._id;
     scheme.remarks = req.body.remarks || '';
-    
+
     await scheme.save();
 
     res.status(200).json({
@@ -87,9 +87,9 @@ export const approveScheme = async (req, res) => {
       data: scheme
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -108,23 +108,23 @@ export const rejectScheme = async (req, res) => {
     }
 
     if (scheme.status !== 'pending') {
-      return res.status(400).json({ 
-        message: 'Only pending schemes can be rejected' 
+      return res.status(400).json({
+        message: 'Only pending schemes can be rejected'
       });
     }
 
     const { remarks } = req.body;
 
     if (!remarks) {
-      return res.status(400).json({ 
-        message: 'Rejection remarks are required' 
+      return res.status(400).json({
+        message: 'Rejection remarks are required'
       });
     }
 
     scheme.status = 'rejected';
     scheme.active = false;
     scheme.remarks = remarks;
-    
+
     await scheme.save();
 
     res.status(200).json({
@@ -132,9 +132,9 @@ export const rejectScheme = async (req, res) => {
       data: scheme
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -153,8 +153,8 @@ export const toggleSchemeStatus = async (req, res) => {
     }
 
     if (scheme.status !== 'approved') {
-      return res.status(400).json({ 
-        message: 'Only approved schemes can be toggled' 
+      return res.status(400).json({
+        message: 'Only approved schemes can be toggled'
       });
     }
 
@@ -166,9 +166,9 @@ export const toggleSchemeStatus = async (req, res) => {
       data: scheme
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -190,9 +190,9 @@ export const getPendingApplications = async (req, res) => {
       data: applications
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -205,9 +205,9 @@ export const getPendingApplications = async (req, res) => {
 export const getAllApplications = async (req, res) => {
   try {
     const { status } = req.query;
-    
+
     const filter = status ? { status } : {};
-    
+
     const applications = await OrganizerApplication.find(filter)
       .populate('user', 'name email age gender state')
       .populate('reviewedBy', 'name email')
@@ -219,9 +219,9 @@ export const getAllApplications = async (req, res) => {
       data: applications
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -240,44 +240,37 @@ export const approveApplication = async (req, res) => {
     }
 
     if (application.status !== 'pending') {
-      return res.status(400).json({ 
-        message: 'Only pending applications can be approved' 
+      return res.status(400).json({
+        message: 'Only pending applications can be approved'
       });
     }
 
     // Update user role to organizer
     const user = await User.findById(application.user);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     if (user.role !== 'user') {
-      return res.status(400).json({ 
-        message: 'User is already an organizer or admin' 
+      return res.status(400).json({
+        message: 'User is already an organizer or admin'
       });
     }
 
     // Use transaction to ensure atomicity
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
       // Update user role to organizer
       user.role = 'organizer';
-      await user.save({ session });
+      await user.save();
 
       // Update application status
       application.status = 'approved';
       application.reviewedBy = req.user._id;
       application.reviewedAt = new Date();
       application.remarks = req.body.remarks || 'Application approved';
-      
-      await application.save({ session });
 
-      // Commit transaction
-      await session.commitTransaction();
-      session.endSession();
+      await application.save();
 
       res.status(200).json({
         success: true,
@@ -285,15 +278,12 @@ export const approveApplication = async (req, res) => {
         data: application
       });
     } catch (error) {
-      // Rollback transaction on error
-      await session.abortTransaction();
-      session.endSession();
       throw error;
     }
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
@@ -312,16 +302,16 @@ export const rejectApplication = async (req, res) => {
     }
 
     if (application.status !== 'pending') {
-      return res.status(400).json({ 
-        message: 'Only pending applications can be rejected' 
+      return res.status(400).json({
+        message: 'Only pending applications can be rejected'
       });
     }
 
     const { remarks } = req.body;
 
     if (!remarks) {
-      return res.status(400).json({ 
-        message: 'Rejection remarks are required' 
+      return res.status(400).json({
+        message: 'Rejection remarks are required'
       });
     }
 
@@ -329,7 +319,7 @@ export const rejectApplication = async (req, res) => {
     application.reviewedBy = req.user._id;
     application.reviewedAt = new Date();
     application.remarks = remarks;
-    
+
     await application.save();
 
     res.status(200).json({
@@ -337,9 +327,9 @@ export const rejectApplication = async (req, res) => {
       data: application
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
