@@ -1,8 +1,8 @@
 import express from 'express';
-import { 
-  createScheme, 
-  getOrganizerSchemes, 
-  updateScheme, 
+import {
+  createScheme,
+  getOrganizerSchemes,
+  updateScheme,
   submitScheme,
   deleteScheme
 } from '../controllers/organizerController.js';

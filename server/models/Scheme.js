@@ -4,7 +4,7 @@ const ruleSchema = new mongoose.Schema({
   field: {
     type: String,
     required: true,
-    enum: ['age', 'income', 'category', 'education', 'gender', 'state', 'district', 'maritalStatus', 'religion', 'disability', 'occupation']
+    enum: ['age', 'income', 'category', 'education', 'state', 'gender', 'marital_status', 'disability', 'occupation']
   },
   operator: {
     type: String,
