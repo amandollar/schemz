@@ -14,12 +14,16 @@ const FIELD_CONFIG = {
     type: 'enum',
     options: ['10th Pass', '12th Pass', 'Graduate', 'Post Graduate', 'PhD']
   },
-  state: { label: 'State', type: 'state' }, // Changed type to 'state' to trigger specific rendering
-  district: { label: 'District', type: 'district' }, // Changed to 'district' type
-  religion: {
-    label: 'Religion',
+  state: { label: 'State', type: 'state' },
+  gender: {
+    label: 'Gender',
     type: 'enum',
-    options: ['Hindu', 'Muslim', 'Christian', 'Sikh', 'Buddhist', 'Jain', 'Other']
+    options: ['Male', 'Female', 'Other']
+  },
+  marital_status: {
+    label: 'Marital Status',
+    type: 'enum',
+    options: ['Single', 'Married', 'Divorced', 'Widowed']
   },
   disability: { label: 'Person with Disability', type: 'boolean' },
   occupation: { label: 'Occupation', type: 'string' },
@@ -46,12 +50,6 @@ const OPERATORS = {
     { value: 'in', label: 'In list (in)' },
     { value: 'not in', label: 'Not in list (not in)' },
   ],
-  district: [
-    { value: '==', label: 'Equal to (==)' },
-    { value: '!=', label: 'Not equal to (!=)' },
-    { value: 'in', label: 'In list (in)' },
-    { value: 'not in', label: 'Not in list (not in)' },
-  ],
   enum: [
     { value: '==', label: 'Equal to (==)' },
     { value: '!=', label: 'Not equal to (!=)' },
@@ -64,21 +62,21 @@ const OPERATORS = {
 };
 
 const RuleBuilder = ({ rules = [], onChange }) => {
-  const [items, setItems] = useState([]); // Stores { state, districts[] } objects
+  const [states, setStates] = useState([]);
 
   useEffect(() => {
-    const fetchStatesAndDistricts = async () => {
+    const fetchStates = async () => {
       try {
-        //For States rules, Fetch states and districts from GitHub
+        //For States rules, Fetch states from GitHub
         const response = await fetch('https://raw.githubusercontent.com/sab99r/Indian-States-And-Districts/master/states-and-districts.json');
         if (response.ok) {
           const data = await response.json();
           if (data && data.states) {
-            setItems(data.states);
+            setStates(data.states.map(i => i.state));
           }
         }
       } catch (error) {
-        console.error("Failed to fetch states and districts:", error);
+        console.error("Failed to fetch states:", error);
         // Fallback list to ensure State dropdown at least works
         const fallbackStates = [
           "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa",
@@ -89,44 +87,13 @@ const RuleBuilder = ({ rules = [], onChange }) => {
           "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Delhi",
           "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
         ];
-        setItems(fallbackStates.map(state => ({ state, districts: [] })));
+        setStates(fallbackStates);
       }
     };
-    fetchStatesAndDistricts();
+    fetchStates();
   }, []);
 
-  // Derived state: List of all state names
-  const stateOptions = useMemo(() => items.map(i => i.state), [items]);
 
-  // Derived state: Get selected states from rules
-  const selectedStateRules = rules.filter(r => r.field === 'state');
-  const hasStateRule = selectedStateRules.length > 0;
-
-  // Derived state: Get available districts based on selected states
-  const districtOptions = useMemo(() => {
-    if (!hasStateRule) return [];
-
-    // Collect all selected state values
-    let selectedStates = [];
-    selectedStateRules.forEach(rule => {
-      if (Array.isArray(rule.value)) {
-        selectedStates.push(...rule.value);
-      } else if (rule.value) {
-        selectedStates.push(rule.value);
-      }
-    });
-
-    // Filter items to find districts for those states
-    const districts = [];
-    items.forEach(item => {
-      if (selectedStates.includes(item.state)) {
-        districts.push(...item.districts);
-      }
-    });
-
-    // Validate uniqueness and sort
-    return [...new Set(districts)].sort();
-  }, [items, selectedStateRules, hasStateRule]);
 
   const addRule = () => {
     onChange([
@@ -209,7 +176,7 @@ const RuleBuilder = ({ rules = [], onChange }) => {
               }}
               className="input text-sm min-h-[100px]"
             >
-              {stateOptions.map(state => (
+              {states.map(state => (
                 <option key={state} value={state}>{state}</option>
               ))}
             </select>
@@ -224,49 +191,14 @@ const RuleBuilder = ({ rules = [], onChange }) => {
           className="input text-sm"
         >
           <option value="">Select State</option>
-          {stateOptions.map(state => (
+          {states.map(state => (
             <option key={state} value={state}>{state}</option>
           ))}
         </select>
       );
     }
 
-    if (type === 'district') {
-      if (isArrayOperator(rule.operator)) {
-        return (
-          <div className="space-y-2">
-            <select
-              multiple
-              value={Array.isArray(rule.value) ? rule.value : []}
-              onChange={(e) => {
-                const options = Array.from(e.target.selectedOptions, option => option.value);
-                updateRule(index, 'value', options);
-              }}
-              className="input text-sm min-h-[100px]"
-              disabled={districtOptions.length === 0}
-            >
-              {districtOptions.map(dist => (
-                <option key={dist} value={dist}>{dist}</option>
-              ))}
-            </select>
-            <p className="text-xs text-slate-500">Hold Ctrl/Cmd to select multiple</p>
-          </div>
-        );
-      }
-      return (
-        <select
-          value={rule.value}
-          onChange={(e) => updateRule(index, 'value', e.target.value)}
-          className="input text-sm"
-          disabled={districtOptions.length === 0}
-        >
-          <option value="">Select District</option>
-          {districtOptions.map(dist => (
-            <option key={dist} value={dist}>{dist}</option>
-          ))}
-        </select>
-      );
-    }
+
 
     if (type === 'enum' && fieldConfig?.options) {
       if (isArrayOperator(rule.operator)) {
@@ -385,7 +317,6 @@ const RuleBuilder = ({ rules = [], onChange }) => {
                         <option
                           key={key}
                           value={key}
-                          disabled={key === 'district' && !hasStateRule}
                         >
                           {config.label}
                         </option>
