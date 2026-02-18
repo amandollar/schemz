@@ -7,6 +7,7 @@ import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Auth Pages
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -42,9 +43,9 @@ function AppContent() {
       {!hideNavbar && <Navbar />}
       <Routes>
         {/* Public Routes */}
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/" element={<Navigate to="/login" replace />} />
 
             {/* User Routes */}
             <Route
