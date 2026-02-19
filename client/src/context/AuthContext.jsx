@@ -53,6 +53,12 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: message };
     }
   };
+  const googleAuth = (userData, authToken) => {
+  localStorage.setItem('token', authToken);
+  setToken(authToken);
+  setUser(userData);
+};
+
 
   const register = async (userData) => {
     try {
@@ -107,18 +113,20 @@ export const AuthProvider = ({ children }) => {
   };
 
   const value = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    updateUserProfile,
-    refreshUser,
-    isAuthenticated: !!user,
-    isUser: user?.role === 'user',
-    isOrganizer: user?.role === 'organizer',
-    isAdmin: user?.role === 'admin',
-  };
+  user,
+  loading,
+  login,
+  register,
+  logout,
+  updateUserProfile,
+  refreshUser,
+  googleAuth, 
+  isAuthenticated: !!user,
+  isUser: user?.role === 'user',
+  isOrganizer: user?.role === 'organizer',
+  isAdmin: user?.role === 'admin',
+};
+
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

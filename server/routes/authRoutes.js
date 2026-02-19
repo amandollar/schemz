@@ -8,8 +8,13 @@ import {
   uploadProfileImage
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
+import { googleLogin } from '../controllers/authController.js';
 
 const router = express.Router();
+
+router.post('/google', googleLogin);
+
+
 
 // Configure multer for profile image uploads (memory storage)
 const upload = multer({
@@ -56,5 +61,6 @@ router.post('/login', login);
 router.get('/me', protect, getMe);
 router.post('/upload-profile-image', protect, upload.single('image'), handleMulterError, uploadProfileImage);
 router.put('/profile', protect, updateProfile);
+router.post('/google', googleLogin);
 
 export default router;

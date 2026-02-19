@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import Logo from '../components/Logo';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -11,36 +13,91 @@ const Register = () => {
     password: '',
     role: 'user',
   });
+
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const { googleAuth } = useAuth();
+
+  // 🔹 Google OAuth Handler
+  const handleGoogleResponse = async (response) => {
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/google`,
+        {
+          credential: response.credential,
+        }
+      );
+
+      const { data, token } = res.data;
+
+      googleAuth(data, token);
+
+      toast.success("Google account connected successfully!");
+
+      if (data.role === 'admin') navigate('/admin/dashboard');
+      else if (data.role === 'organizer') navigate('/organizer/dashboard');
+      else navigate('/user/dashboard');
+
+    } catch (error) {
+      console.error("Google registration failed", error);
+      toast.error("Google authentication failed");
+    }
+  };
+
+  // 🔹 Initialize Google Button
+  useEffect(() => {
+    const initializeGoogle = () => {
+      if (!window.google) return;
+
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        callback: handleGoogleResponse,
+      });
+
+      window.google.accounts.id.renderButton(
+        document.getElementById("googleRegisterDiv"),
+        {
+          theme: "outline",
+          size: "large",
+          width: 385,
+        }
+      );
+    };
+
+    if (window.google) {
+      initializeGoogle();
+    } else {
+      const interval = setInterval(() => {
+        if (window.google) {
+          initializeGoogle();
+          clearInterval(interval);
+        }
+      }, 100);
+    }
+  }, []);
+
+  // 🔹 Normal Register Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       const response = await authAPI.register(formData);
-      
-      if (response.data.success) {
-        toast.success(response.data.message || 'Registration successful!');
-        
-        // Automatically log in the user after registration
-        if (response.data.token) {
-          localStorage.setItem('token', response.data.token);
-          localStorage.setItem('user', JSON.stringify(response.data.data));
-          
-          // Redirect based on role
-          if (response.data.data.role === 'admin') {
-            navigate('/admin/dashboard');
-          } else if (response.data.data.role === 'organizer') {
-            navigate('/organizer/dashboard');
-          } else {
-            navigate('/user/dashboard');
-          }
-        } else {
-          navigate('/login');
-        }
+
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+
+        const user = response.data.data;
+
+        if (user.role === 'admin') navigate('/admin/dashboard');
+        else if (user.role === 'organizer') navigate('/organizer/dashboard');
+        else navigate('/user/dashboard');
+
+      } else {
+        navigate('/login');
       }
+
     } catch (error) {
       const message = error.response?.data?.message || 'Registration failed';
       toast.error(message);
@@ -58,7 +115,8 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-gov-100 flex">
-      {/* Left Side - Hero Image */}
+
+      {/* Left Side */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-accent-600 to-accent-800 overflow-hidden">
         <div className="absolute inset-0 bg-black opacity-40"></div>
         <img
@@ -67,58 +125,29 @@ const Register = () => {
           className="absolute inset-0 w-full h-full object-cover mix-blend-overlay"
         />
         <div className="relative z-10 flex flex-col justify-center px-12 text-white">
-          <div className="mb-8">
-            <div className="flex items-center space-x-3 mb-6">
-              <Logo size={48} className="text-white" />
-              <div>
-                <h1 className="text-2xl font-bold">Schemz Portal</h1>
-                <p className="text-sm text-white/90">Government Scheme Management</p>
-              </div>
+          <div className="flex items-center space-x-3 mb-6">
+            <Logo size={48} className="text-white" />
+            <div>
+              <h1 className="text-2xl font-bold">Schemz Portal</h1>
+              <p className="text-sm text-white/90">Government Scheme Management</p>
             </div>
           </div>
+
           <h2 className="text-4xl font-bold mb-4">
             Join Thousands of Citizens
           </h2>
           <p className="text-lg text-white/90 mb-8">
-            Register today to discover government schemes tailored for you. 
-            Simple, secure, and designed to help you access the benefits you deserve.
+            Register today to discover government schemes tailored for you.
           </p>
-          <div className="flex items-center space-x-8 text-sm">
-            <div>
-              <div className="text-3xl font-bold">Free</div>
-              <div className="text-white/80">Always</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold">Secure</div>
-              <div className="text-white/80">Your Data</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold">Easy</div>
-              <div className="text-white/80">To Use</div>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Right Side - Register Form */}
+      {/* Right Side */}
       <div className="w-full lg:w-1/2 flex flex-col">
-        {/* Mobile Header */}
-        <div className="lg:hidden bg-white border-b border-gov-200">
-          <div className="px-4 sm:px-6 py-4">
-            <div className="flex items-center space-x-3">
-              <Logo size={40} className="text-accent-600" />
-              <div>
-                <h1 className="text-lg font-semibold text-gov-900">Schemz Portal</h1>
-                <p className="text-xs text-gov-600">Government Scheme Management System</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Register Form Container */}
         <div className="flex-1 flex items-center justify-center px-4 py-12">
           <div className="w-full max-w-md">
-            {/* Register Card */}
+
             <div className="bg-white rounded-lg shadow-medium border border-gov-200 p-8">
               <div className="mb-6">
                 <h2 className="text-2xl font-semibold text-gov-900 mb-2">Create Account</h2>
@@ -126,13 +155,10 @@ const Register = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Name */}
+
                 <div>
-                  <label htmlFor="name" className="form-label">
-                    Full Name
-                  </label>
+                  <label className="form-label">Full Name</label>
                   <input
-                    id="name"
                     type="text"
                     name="name"
                     value={formData.name}
@@ -143,13 +169,9 @@ const Register = () => {
                   />
                 </div>
 
-                {/* Email */}
                 <div>
-                  <label htmlFor="email" className="form-label">
-                    Email Address
-                  </label>
+                  <label className="form-label">Email Address</label>
                   <input
-                    id="email"
                     type="email"
                     name="email"
                     value={formData.email}
@@ -157,17 +179,12 @@ const Register = () => {
                     className="form-input"
                     placeholder="your.email@example.com"
                     required
-                    autoComplete="email"
                   />
                 </div>
 
-                {/* Password */}
                 <div>
-                  <label htmlFor="password" className="form-label">
-                    Password
-                  </label>
+                  <label className="form-label">Password</label>
                   <input
-                    id="password"
                     type="password"
                     name="password"
                     value={formData.password}
@@ -175,13 +192,11 @@ const Register = () => {
                     className="form-input"
                     placeholder="Create a strong password"
                     required
-                    autoComplete="new-password"
                     minLength={6}
                   />
                   <p className="mt-1 text-xs text-gov-500">Must be at least 6 characters</p>
                 </div>
 
-                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={loading}
@@ -191,7 +206,12 @@ const Register = () => {
                 </button>
               </form>
 
-              {/* Login Link */}
+              {/* 🔹 Google Button Section */}
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gov-500 mb-3">Or continue with</p>
+                <div id="googleRegisterDiv"></div>
+              </div>
+
               <div className="mt-6 text-center">
                 <p className="text-sm text-gov-600">
                   Already have an account?{' '}
@@ -202,10 +222,10 @@ const Register = () => {
               </div>
             </div>
 
-            {/* Additional Info */}
             <div className="mt-6 text-center text-xs text-gov-600">
               <p>By creating an account, you agree to our Terms of Service and Privacy Policy</p>
             </div>
+
           </div>
         </div>
       </div>
