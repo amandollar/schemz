@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import Logo from '../components/Logo';
+import axios from 'axios';
 
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+
   const [loading, setLoading] = useState(false);
-  const { login, user, loading: authLoading } = useAuth();
+
+  const { login, googleAuth, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already logged in
+  // 🔹 Redirect if already logged in
   useEffect(() => {
     if (!authLoading && user) {
       if (user.role === 'admin') navigate('/admin/dashboard');
@@ -23,14 +25,76 @@ const Login = () => {
     }
   }, [user, authLoading, navigate]);
 
+  // 🔹 Google Login Initialization
+  useEffect(() => {
+  const initializeGoogle = () => {
+    if (!window.google) return;
+
+    window.google.accounts.id.initialize({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      callback: handleGoogleResponse,
+    });
+
+    window.google.accounts.id.renderButton(
+      document.getElementById("googleSignInDiv"),
+      {
+        theme: "outline",
+        size: "large",
+        width: 383,
+      }
+    );
+  };
+
+  // If already loaded
+  if (window.google) {
+    initializeGoogle();
+  } else {
+    // Wait for script to load
+    const interval = setInterval(() => {
+      if (window.google) {
+        initializeGoogle();
+        clearInterval(interval);
+      }
+    }, 100);
+  }
+}, []);
+
+
+  // 🔹 Handle Google Response
+  const handleGoogleResponse = async (response) => {
+  try {
+    const res = await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/auth/google`,
+      {
+        credential: response.credential,
+      }
+    );
+
+    const { data, token } = res.data;
+
+    googleAuth(data, token);
+
+    toast.success("Google login successful!");
+
+    if (data.role === 'admin') navigate('/admin/dashboard');
+    else if (data.role === 'organizer') navigate('/organizer/dashboard');
+    else navigate('/user/dashboard');
+
+  } catch (error) {
+    console.error("Google login failed", error);
+    toast.error("Google login failed");
+  }
+};
+
+
+  // 🔹 Normal Login Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     const result = await login(formData);
-    
+
     if (result.success) {
-      // Redirect based on role
       if (result.user?.role === 'admin') {
         navigate('/admin/dashboard');
       } else if (result.user?.role === 'organizer') {
@@ -39,7 +103,7 @@ const Login = () => {
         navigate('/user/dashboard');
       }
     }
-    
+
     setLoading(false);
   };
 
@@ -52,7 +116,8 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gov-100 flex">
-      {/* Left Side - Hero Image */}
+
+      {/* Left Side */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-accent-700 to-accent-900">
         <div className="absolute inset-0 bg-black opacity-40"></div>
         <img
@@ -61,58 +126,29 @@ const Login = () => {
           className="absolute inset-0 w-full h-full object-cover mix-blend-overlay"
         />
         <div className="relative z-10 flex flex-col justify-center px-12 text-white">
-          <div className="mb-8">
-            <div className="flex items-center space-x-3 mb-6">
-              <Logo size={48} className="text-white" />
-              <div>
-                <h1 className="text-2xl font-bold">Schemz Portal</h1>
-                <p className="text-sm text-white/90">Government Scheme Management</p>
-              </div>
+          <div className="flex items-center space-x-3 mb-6">
+            <Logo size={48} className="text-white" />
+            <div>
+              <h1 className="text-2xl font-bold">Schemz Portal</h1>
+              <p className="text-sm text-white/90">Government Scheme Management</p>
             </div>
           </div>
+
           <h2 className="text-4xl font-bold mb-4">
             Empowering Citizens Through Government Schemes
           </h2>
           <p className="text-lg text-white/90 mb-8">
-            Access, discover, and apply for government welfare schemes designed for your benefit. 
-            Join thousands of citizens already benefiting from our platform.
+            Access, discover, and apply for government welfare schemes designed for your benefit.
           </p>
-          <div className="flex items-center space-x-8 text-sm">
-            <div>
-              <div className="text-3xl font-bold">1000+</div>
-              <div className="text-white/80">Active Schemes</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold">50K+</div>
-              <div className="text-white/80">Citizens Helped</div>
-            </div>
-            <div>
-              <div className="text-3xl font-bold">100%</div>
-              <div className="text-white/80">Secure</div>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Right Side - Login Form */}
+      {/* Right Side */}
       <div className="w-full lg:w-1/2 flex flex-col">
-        {/* Mobile Header */}
-        <div className="lg:hidden bg-white border-b border-gov-200">
-          <div className="px-4 sm:px-6 py-4">
-            <div className="flex items-center space-x-3">
-              <Logo size={40} className="text-accent-600" />
-              <div>
-                <h1 className="text-lg font-semibold text-gov-900">Schemz Portal</h1>
-                <p className="text-xs text-gov-600">Government Scheme Management System</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Login Form Container */}
         <div className="flex-1 flex items-center justify-center px-4 py-12">
           <div className="w-full max-w-md">
-            {/* Login Card */}
+
             <div className="bg-white rounded-lg shadow-medium border border-gov-200 p-8">
               <div className="mb-6">
                 <h2 className="text-2xl font-semibold text-gov-900 mb-2">Sign In</h2>
@@ -120,10 +156,9 @@ const Login = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
+
                 <div>
-                  <label htmlFor="email" className="form-label">
-                    Email Address
-                  </label>
+                  <label htmlFor="email" className="form-label">Email Address</label>
                   <input
                     id="email"
                     name="email"
@@ -137,9 +172,7 @@ const Login = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="form-label">
-                    Password
-                  </label>
+                  <label htmlFor="password" className="form-label">Password</label>
                   <input
                     id="password"
                     name="password"
@@ -161,6 +194,11 @@ const Login = () => {
                 </button>
               </form>
 
+              {/* 🔹 Google Button */}
+              <div className="mt-6">
+                <div id="googleSignInDiv"></div>
+              </div>
+
               <div className="mt-6 text-center">
                 <p className="text-sm text-gov-600">
                   Don't have an account?{' '}
@@ -171,10 +209,10 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Additional Info */}
             <div className="mt-6 text-center text-xs text-gov-600">
               <p>By signing in, you agree to our Terms of Service and Privacy Policy</p>
             </div>
+
           </div>
         </div>
       </div>

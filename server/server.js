@@ -32,6 +32,8 @@ app.use('/api/organizer', organizerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/application', applicationRoutes);
 app.use('/api/scheme-applications', schemeApplicationRoutes);
+app.use('/api/auth', authRoutes);
+
 
 // Health check route
 app.get('/api/health', (req, res) => {

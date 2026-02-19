@@ -1,6 +1,11 @@
-import User from '../models/User.js';
 import { generateToken } from '../middleware/auth.js';
 import { uploadProfileImage as uploadProfileImageToCloudinary } from '../services/cloudinaryService.js';
+import { OAuth2Client } from 'google-auth-library';
+import User from '../models/User.js';
+import jwt from 'jsonwebtoken';
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 
 /**
  * @desc    Register a new user
@@ -216,5 +221,56 @@ export const updateProfile = async (req, res) => {
       success: false, 
       message: error.message 
     });
+  }
+};
+
+
+export const googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body; // ID token from frontend
+
+    if (!credential) {
+      return res.status(400).json({ message: 'Google credential missing' });
+    }
+
+    // Verify Google ID token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    const { sub, email, name, picture } = payload;
+
+    // Check if user already exists
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Create new OAuth user
+      user = await User.create({
+        name,
+        email,
+        googleId: sub,
+        profileImage: picture,
+        role: 'user',
+      });
+    }
+
+    // Generate your existing JWT
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({
+      token,
+      data: user,
+    });
+
+  } catch (error) {
+    console.error('Google Login Error:', error);
+    res.status(401).json({ message: 'Google authentication failed' });
   }
 };
