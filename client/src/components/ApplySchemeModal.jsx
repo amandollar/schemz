@@ -20,6 +20,20 @@ const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
     aadhaarNumber: '',
     remarks: ''
   });
+
+  // Pre-fill from profile when modal opens
+  useEffect(() => {
+    if (user && isOpen) {
+      setFormData(prev => ({
+        ...prev,
+        aadhaarNumber: user.aadhaarNumber || prev.aadhaarNumber,
+        accountNumber: user.bankDetails?.accountNumber || prev.accountNumber,
+        ifscCode: user.bankDetails?.ifscCode || prev.ifscCode,
+        bankName: user.bankDetails?.bankName || prev.bankName,
+        branchName: user.bankDetails?.branchName || prev.branchName,
+      }));
+    }
+  }, [user, isOpen]);
   
   const [files, setFiles] = useState({
     marksheet: null,
@@ -135,21 +149,21 @@ const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
       };
       submitData.append('applicantDetails', JSON.stringify(applicantDetails));
       
-      // Add application data
+      // Add application data (profile values used as fallback on backend if empty)
       const applicationData = {
         purpose: formData.purpose,
         bankDetails: {
-          accountNumber: formData.accountNumber,
-          ifscCode: formData.ifscCode,
-          bankName: formData.bankName,
-          branchName: formData.branchName
+          accountNumber: formData.accountNumber || '',
+          ifscCode: formData.ifscCode || '',
+          bankName: formData.bankName || '',
+          branchName: formData.branchName || ''
         },
-        aadhaarNumber: formData.aadhaarNumber,
+        aadhaarNumber: formData.aadhaarNumber || '',
         remarks: formData.remarks
       };
       submitData.append('applicationData', JSON.stringify(applicationData));
       
-      // Add files
+      // Add files - only include if user uploaded (backend uses profile docs when not provided)
       submitData.append('marksheet', files.marksheet);
       if (files.incomeCertificate) {
         submitData.append('incomeCertificate', files.incomeCertificate);
@@ -326,7 +340,12 @@ const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
 
           {/* Bank Details */}
           <div>
-            <h3 className="text-lg font-semibold text-gov-900 mb-4">Bank Details (for benefit transfer)</h3>
+            <h3 className="text-lg font-semibold text-gov-900 mb-4">
+              Bank Details (for benefit transfer)
+              {user?.bankDetails?.accountNumber && (
+                <span className="ml-2 text-sm font-normal text-green-600">• From profile</span>
+              )}
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="accountNumber" className="form-label">Account Number</label>
@@ -381,7 +400,12 @@ const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
 
           {/* Aadhaar Number */}
           <div>
-            <label htmlFor="aadhaarNumber" className="form-label">Aadhaar Number</label>
+            <label htmlFor="aadhaarNumber" className="form-label">
+              Aadhaar Number
+              {user?.aadhaarNumber && (
+                <span className="ml-2 text-sm font-normal text-green-600">• From profile</span>
+              )}
+            </label>
             <input
               type="text"
               id="aadhaarNumber"
@@ -424,12 +448,17 @@ const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
 
             {/* Income Certificate */}
             <div className="mb-4">
-              <label className="form-label">Income Certificate (Optional)</label>
+              <label className="form-label">
+                Income Certificate (Optional)
+                {user?.documents?.incomeCertificate && !files.incomeCertificate && (
+                  <span className="ml-2 text-sm font-normal text-green-600">• Using profile document</span>
+                )}
+              </label>
               <div className="flex items-center space-x-4">
                 <label className="flex-1 flex items-center justify-center px-4 py-3 border-2 border-dashed border-gov-300 rounded-lg hover:border-accent-500 cursor-pointer transition-colors">
                   <Upload size={20} className="text-gov-400 mr-2" />
                   <span className="text-sm text-gov-600">
-                    {files.incomeCertificate ? files.incomeCertificate.name : 'Choose file (PDF, JPG, PNG)'}
+                    {files.incomeCertificate ? files.incomeCertificate.name : user?.documents?.incomeCertificate ? 'Uploaded in profile ✓ (or choose to override)' : 'Choose file (PDF, JPG, PNG)'}
                   </span>
                   <input
                     type="file"
@@ -446,12 +475,17 @@ const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
 
             {/* Category Certificate */}
             <div className="mb-4">
-              <label className="form-label">Category Certificate (Optional)</label>
+              <label className="form-label">
+                Category Certificate (Optional)
+                {user?.documents?.categoryCertificate && !files.categoryCertificate && (
+                  <span className="ml-2 text-sm font-normal text-green-600">• Using profile document</span>
+                )}
+              </label>
               <div className="flex items-center space-x-4">
                 <label className="flex-1 flex items-center justify-center px-4 py-3 border-2 border-dashed border-gov-300 rounded-lg hover:border-accent-500 cursor-pointer transition-colors">
                   <Upload size={20} className="text-gov-400 mr-2" />
                   <span className="text-sm text-gov-600">
-                    {files.categoryCertificate ? files.categoryCertificate.name : 'Choose file (PDF, JPG, PNG)'}
+                    {files.categoryCertificate ? files.categoryCertificate.name : user?.documents?.categoryCertificate ? 'Uploaded in profile ✓ (or choose to override)' : 'Choose file (PDF, JPG, PNG)'}
                   </span>
                   <input
                     type="file"

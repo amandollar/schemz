@@ -5,7 +5,8 @@ import {
   login, 
   getMe, 
   updateProfile,
-  uploadProfileImage
+  uploadProfileImage,
+  uploadProfileDocuments
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import { googleLogin } from '../controllers/authController.js';
@@ -28,6 +29,22 @@ const upload = multer({
       cb(null, true);
     } else {
       cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
+
+// Multer for profile documents (PDF + images)
+const uploadDocuments = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf' ||
+        file.mimetype === 'image/jpeg' ||
+        file.mimetype === 'image/jpg' ||
+        file.mimetype === 'image/png') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF, JPG, JPEG, and PNG files are allowed'), false);
     }
   }
 });
@@ -60,6 +77,15 @@ router.post('/register', register);
 router.post('/login', login);
 router.get('/me', protect, getMe);
 router.post('/upload-profile-image', protect, upload.single('image'), handleMulterError, uploadProfileImage);
+router.post('/upload-profile-documents', protect,
+  uploadDocuments.fields([
+    { name: 'aadhaarDocument', maxCount: 1 },
+    { name: 'incomeCertificate', maxCount: 1 },
+    { name: 'categoryCertificate', maxCount: 1 }
+  ]),
+  handleMulterError,
+  uploadProfileDocuments
+);
 router.put('/profile', protect, updateProfile);
 router.post('/google', googleLogin);
 

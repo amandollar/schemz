@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import Logo from '../components/Logo';
 import axios from 'axios';
@@ -17,7 +16,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const { googleAuth } = useAuth();
+  const { register: registerUser, googleAuth } = useAuth();
 
   // 🔹 Google OAuth Handler
   const handleGoogleResponse = async (response) => {
@@ -83,24 +82,19 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const response = await authAPI.register(formData);
+      const result = await registerUser(formData);
 
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-
-        const user = response.data.data;
+      if (result.success && result.data) {
+        const user = result.data;
 
         if (user.role === 'admin') navigate('/admin/dashboard');
         else if (user.role === 'organizer') navigate('/organizer/dashboard');
         else navigate('/user/dashboard');
-
-      } else {
+      } else if (result.success) {
         navigate('/login');
       }
-
     } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed';
-      toast.error(message);
+      // Error already handled by AuthContext (toast)
     } finally {
       setLoading(false);
     }

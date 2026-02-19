@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { authAPI } from '../../services/api';
-import { Save, User, Phone, MapPin, Briefcase, GraduationCap, Heart, Info, Camera, Upload } from 'lucide-react';
+import { Save, User, Phone, MapPin, Briefcase, GraduationCap, Heart, Info, Camera, Upload, CreditCard, FileText } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const CATEGORIES = ['General', 'OBC', 'SC', 'ST', 'EWS'];
@@ -41,6 +41,11 @@ const Profile = () => {
     education: user?.education || '',
     disability: user?.disability || false,
     profileImage: user?.profileImage || '',
+    aadhaarNumber: user?.aadhaarNumber || '',
+    accountNumber: user?.bankDetails?.accountNumber || '',
+    ifscCode: user?.bankDetails?.ifscCode || '',
+    bankName: user?.bankDetails?.bankName || '',
+    branchName: user?.bankDetails?.branchName || '',
   });
 
   // Update form data when user changes
@@ -63,6 +68,11 @@ const Profile = () => {
         education: user.education || '',
         disability: user.disability || false,
         profileImage: user.profileImage || '',
+        aadhaarNumber: user.aadhaarNumber || '',
+        accountNumber: user.bankDetails?.accountNumber || '',
+        ifscCode: user.bankDetails?.ifscCode || '',
+        bankName: user.bankDetails?.bankName || '',
+        branchName: user.bankDetails?.branchName || '',
       });
     }
   }, [user]);
@@ -120,18 +130,59 @@ const Profile = () => {
     }
   };
 
+  const handleDocumentUpload = async (e, docType) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size should be less than 5MB');
+      return;
+    }
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Only PDF, JPG, JPEG, and PNG files are allowed');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append(docType, file);
+      const response = await authAPI.uploadProfileDocuments(fd);
+      if (response.data.success) {
+        await refreshUser();
+        toast.success(`${docType.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} uploaded successfully!`);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    // Convert numeric fields
+    // Convert numeric fields and structure bank details
     const profileData = {
       ...formData,
       age: formData.age ? parseInt(formData.age) : undefined,
       income: formData.income ? parseInt(formData.income) : undefined,
+      bankDetails: (formData.accountNumber || formData.ifscCode || formData.bankName || formData.branchName) ? {
+        accountNumber: formData.accountNumber || undefined,
+        ifscCode: formData.ifscCode || undefined,
+        bankName: formData.bankName || undefined,
+        branchName: formData.branchName || undefined,
+      } : undefined,
     };
 
-    // Remove empty strings
+    // Remove flat bank fields and empty strings
+    delete profileData.accountNumber;
+    delete profileData.ifscCode;
+    delete profileData.bankName;
+    delete profileData.branchName;
     Object.keys(profileData).forEach(key => {
       if (profileData[key] === '') {
         delete profileData[key];
@@ -479,6 +530,153 @@ const Profile = () => {
                 <label htmlFor="disability" className="ml-2 text-sm text-gov-700">
                   Person with Disability (PwD)
                 </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Aadhaar & Bank Details */}
+          <div className="card">
+            <h2 className="text-lg font-semibold text-gov-900 mb-4 flex items-center">
+              <CreditCard className="mr-2 text-accent-600" size={20} />
+              Aadhaar & Bank Details
+            </h2>
+            <p className="text-sm text-gov-600 mb-4">
+              Store these once so you don&apos;t need to enter them for every scheme application.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="label">Aadhaar Number</label>
+                <input
+                  type="text"
+                  name="aadhaarNumber"
+                  value={formData.aadhaarNumber}
+                  onChange={handleChange}
+                  className="input"
+                  placeholder="12-digit Aadhaar number"
+                  maxLength="12"
+                  pattern="[0-9]{12}"
+                />
+                <p className="text-xs text-gov-600 mt-1">Format: 123456789012</p>
+              </div>
+              <div>
+                <label className="label">Account Number</label>
+                <input
+                  type="text"
+                  name="accountNumber"
+                  value={formData.accountNumber}
+                  onChange={handleChange}
+                  className="input"
+                  placeholder="Bank account number"
+                />
+              </div>
+              <div>
+                <label className="label">IFSC Code</label>
+                <input
+                  type="text"
+                  name="ifscCode"
+                  value={formData.ifscCode}
+                  onChange={handleChange}
+                  className="input"
+                  placeholder="e.g., SBIN0001234"
+                />
+              </div>
+              <div>
+                <label className="label">Bank Name</label>
+                <input
+                  type="text"
+                  name="bankName"
+                  value={formData.bankName}
+                  onChange={handleChange}
+                  className="input"
+                  placeholder="Name of your bank"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="label">Branch Name</label>
+                <input
+                  type="text"
+                  name="branchName"
+                  value={formData.branchName}
+                  onChange={handleChange}
+                  className="input"
+                  placeholder="Branch name"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Common Documents */}
+          <div className="card">
+            <h2 className="text-lg font-semibold text-gov-900 mb-4 flex items-center">
+              <FileText className="mr-2 text-accent-600" size={20} />
+              Common Documents
+            </h2>
+            <p className="text-sm text-gov-600 mb-4">
+              Upload these documents once. They will be used automatically when you apply for schemes.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="label">Aadhaar Document</label>
+                <div className="flex items-center gap-4">
+                  <label className="flex-1 flex items-center justify-center px-4 py-3 border-2 border-dashed border-gov-300 rounded-lg hover:border-accent-500 cursor-pointer transition-colors">
+                    <Upload size={20} className="text-gov-400 mr-2" />
+                    <span className="text-sm text-gov-600">
+                      {user?.documents?.aadhaarDocument ? 'Uploaded ✓' : 'Choose file (PDF, JPG, PNG)'}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleDocumentUpload(e, 'aadhaarDocument')}
+                      className="hidden"
+                      disabled={uploading}
+                    />
+                  </label>
+                  {user?.documents?.aadhaarDocument && (
+                    <a href={user.documents.aadhaarDocument} target="_blank" rel="noopener noreferrer" className="text-sm text-accent-600 hover:underline">View</a>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="label">Income Certificate</label>
+                <div className="flex items-center gap-4">
+                  <label className="flex-1 flex items-center justify-center px-4 py-3 border-2 border-dashed border-gov-300 rounded-lg hover:border-accent-500 cursor-pointer transition-colors">
+                    <Upload size={20} className="text-gov-400 mr-2" />
+                    <span className="text-sm text-gov-600">
+                      {user?.documents?.incomeCertificate ? 'Uploaded ✓' : 'Choose file (PDF, JPG, PNG)'}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleDocumentUpload(e, 'incomeCertificate')}
+                      className="hidden"
+                      disabled={uploading}
+                    />
+                  </label>
+                  {user?.documents?.incomeCertificate && (
+                    <a href={user.documents.incomeCertificate} target="_blank" rel="noopener noreferrer" className="text-sm text-accent-600 hover:underline">View</a>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="label">Category Certificate (SC/ST/OBC/EWS)</label>
+                <div className="flex items-center gap-4">
+                  <label className="flex-1 flex items-center justify-center px-4 py-3 border-2 border-dashed border-gov-300 rounded-lg hover:border-accent-500 cursor-pointer transition-colors">
+                    <Upload size={20} className="text-gov-400 mr-2" />
+                    <span className="text-sm text-gov-600">
+                      {user?.documents?.categoryCertificate ? 'Uploaded ✓' : 'Choose file (PDF, JPG, PNG)'}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => handleDocumentUpload(e, 'categoryCertificate')}
+                      className="hidden"
+                      disabled={uploading}
+                    />
+                  </label>
+                  {user?.documents?.categoryCertificate && (
+                    <a href={user.documents.categoryCertificate} target="_blank" rel="noopener noreferrer" className="text-sm text-accent-600 hover:underline">View</a>
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, X, LogOut, User, ChevronDown, Home, FileText, Settings, Bell } from 'lucide-react';
+import { Menu, X, LogOut, User, ChevronDown, Home, FileText, Settings, Bell, MessageCircle } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import Logo from './Logo';
 
@@ -110,6 +110,12 @@ const Navbar = () => {
               {user?.role === 'organizer' && (
                 <>
                   <NavLink to="/organizer/my-schemes">My Schemes</NavLink>
+                  <NavLink to="/organizer/support-queries">
+                    <div className="flex items-center space-x-1.5">
+                      <MessageCircle size={16} />
+                      <span>Support</span>
+                    </div>
+                  </NavLink>
                   <Link
                     to="/organizer/create-scheme"
                     className="ml-2 btn-primary flex items-center space-x-1.5"
@@ -125,6 +131,12 @@ const Navbar = () => {
                   <NavLink to="/admin/pending-schemes">Pending Schemes</NavLink>
                   <NavLink to="/admin/pending-applications">Applications</NavLink>
                   <NavLink to="/admin/all-schemes">All Schemes</NavLink>
+                  <NavLink to="/admin/support-queries">
+                    <div className="flex items-center space-x-1.5">
+                      <MessageCircle size={16} />
+                      <span>Support</span>
+                    </div>
+                  </NavLink>
                 </>
               )}
             </div>
@@ -240,6 +252,7 @@ const Navbar = () => {
               {user?.role === 'organizer' && (
                 <>
                   <NavLink to="/organizer/my-schemes" mobile>My Schemes</NavLink>
+                  <NavLink to="/organizer/support-queries" mobile>Support</NavLink>
                   <NavLink to="/organizer/create-scheme" mobile>Create Scheme</NavLink>
                 </>
               )}
@@ -249,6 +262,7 @@ const Navbar = () => {
                   <NavLink to="/admin/pending-schemes" mobile>Pending Schemes</NavLink>
                   <NavLink to="/admin/pending-applications" mobile>Applications</NavLink>
                   <NavLink to="/admin/all-schemes" mobile>All Schemes</NavLink>
+                  <NavLink to="/admin/support-queries" mobile>Support</NavLink>
                 </>
               )}
             </div>

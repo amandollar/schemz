@@ -51,6 +51,13 @@ export const authAPI = {
       },
     });
   },
+  uploadProfileDocuments: (formData) => {
+    return api.post('/auth/upload-profile-documents', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };
 
 // Scheme API (User)
@@ -87,6 +94,15 @@ export const adminAPI = {
   getAllApplications: (status) => api.get('/admin/applications', { params: { status } }),
   approveApplication: (id) => api.post(`/admin/application/${id}/approve`),
   rejectApplication: (id, data) => api.post(`/admin/application/${id}/reject`, data),
+};
+
+// Support Query API (Organizer & Admin chat with admin)
+export const supportQueryAPI = {
+  create: (data) => api.post('/support-queries', data),
+  getAll: (params) => api.get('/support-queries', { params }),
+  getById: (id) => api.get(`/support-queries/${id}`),
+  sendMessage: (id, content) => api.post(`/support-queries/${id}/messages`, { content }),
+  resolve: (id) => api.patch(`/support-queries/${id}/resolve`),
 };
 
 // Scheme Application API

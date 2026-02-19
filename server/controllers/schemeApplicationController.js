@@ -1,5 +1,6 @@
 import SchemeApplication from '../models/SchemeApplication.js';
 import Scheme from '../models/Scheme.js';
+import User from '../models/User.js';
 import { uploadDocument } from '../services/backblazeService.js';
 import mongoose from 'mongoose';
 
@@ -84,65 +85,70 @@ export const submitApplication = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Scheme is not active for applications' });
     }
 
-    // Upload documents first (before transaction to avoid holding transaction open during file uploads)
-    const documents = {};
+    // Fetch user profile for fallback documents
+    const userProfile = await User.findById(req.user._id).select('aadhaarNumber bankDetails documents');
 
-    // Check if files were uploaded
-    if (!req.files) {
-      return res.status(400).json({
-        success: false,
-        message: 'No files uploaded. Please upload required documents.'
-      });
+    // Merge application data with profile fallbacks (profile values used when application data is empty)
+    if (!parsedApplicationData.aadhaarNumber && userProfile?.aadhaarNumber) {
+      parsedApplicationData.aadhaarNumber = userProfile.aadhaarNumber;
+    }
+    if (!parsedApplicationData.bankDetails || Object.values(parsedApplicationData.bankDetails || {}).every(v => !v)) {
+      if (userProfile?.bankDetails && Object.values(userProfile.bankDetails).some(v => v)) {
+        parsedApplicationData.bankDetails = userProfile.bankDetails;
+      }
     }
 
-    try {
-      if (req.files.marksheet && req.files.marksheet[0]) {
-        const file = req.files.marksheet[0];
-        documents.marksheet = await uploadDocument(
-          file.buffer,
-          'marksheets',
-          file.originalname || 'marksheet.pdf'
-        );
-      } else {
-        return res.status(400).json({ success: false, message: 'Marksheet is required' });
-      }
+    // Upload documents - use profile documents when not provided in request
+    const documents = {};
 
-      if (req.files.incomeCertificate && req.files.incomeCertificate[0]) {
-        const file = req.files.incomeCertificate[0];
-        documents.incomeCertificate = await uploadDocument(
-          file.buffer,
-          'certificates',
-          file.originalname || 'income-certificate.pdf'
-        );
-      }
+    // Marksheet is always required per application (scheme-specific: 10th/12th/degree)
+    if (req.files?.marksheet?.[0]) {
+      const file = req.files.marksheet[0];
+      documents.marksheet = await uploadDocument(
+        file.buffer,
+        'marksheets',
+        file.originalname || 'marksheet.pdf'
+      );
+    } else {
+      return res.status(400).json({ success: false, message: 'Marksheet/Educational certificate is required' });
+    }
 
-      if (req.files.categoryCertificate && req.files.categoryCertificate[0]) {
-        const file = req.files.categoryCertificate[0];
-        documents.categoryCertificate = await uploadDocument(
-          file.buffer,
-          'certificates',
-          file.originalname || 'category-certificate.pdf'
-        );
-      }
+    // Income certificate: use uploaded file or profile document
+    if (req.files?.incomeCertificate?.[0]) {
+      const file = req.files.incomeCertificate[0];
+      documents.incomeCertificate = await uploadDocument(
+        file.buffer,
+        'certificates',
+        file.originalname || 'income-certificate.pdf'
+      );
+    } else if (userProfile?.documents?.incomeCertificate) {
+      documents.incomeCertificate = userProfile.documents.incomeCertificate;
+    }
 
-      if (req.files.otherDocuments && req.files.otherDocuments.length > 0) {
-        documents.otherDocuments = await Promise.all(
-          req.files.otherDocuments.map(async (file) => ({
-            name: file.originalname || 'document',
-            url: await uploadDocument(
-              file.buffer,
-              'other-documents',
-              file.originalname || 'document.pdf'
-            )
-          }))
-        );
-      }
-    } catch (uploadError) {
-      console.error('Document upload error:', uploadError);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to upload documents. Please try again.'
-      });
+    // Category certificate: use uploaded file or profile document
+    if (req.files?.categoryCertificate?.[0]) {
+      const file = req.files.categoryCertificate[0];
+      documents.categoryCertificate = await uploadDocument(
+        file.buffer,
+        'certificates',
+        file.originalname || 'category-certificate.pdf'
+      );
+    } else if (userProfile?.documents?.categoryCertificate) {
+      documents.categoryCertificate = userProfile.documents.categoryCertificate;
+    }
+
+    // Other documents: always from upload (scheme-specific)
+    if (req.files?.otherDocuments?.length > 0) {
+      documents.otherDocuments = await Promise.all(
+        req.files.otherDocuments.map(async (file) => ({
+          name: file.originalname || 'document',
+          url: await uploadDocument(
+            file.buffer,
+            'other-documents',
+            file.originalname || 'document.pdf'
+          )
+        }))
+      );
     }
 
     // Clean up applicant details: convert empty strings to undefined for enum fields

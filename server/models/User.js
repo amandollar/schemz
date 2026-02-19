@@ -126,6 +126,26 @@ const userSchema = new mongoose.Schema({
   profileImage: {
     type: String,
     default: ''
+  },
+
+  // Common documents stored in profile (reused across applications)
+  aadhaarNumber: {
+    type: String,
+    trim: true,
+    maxlength: 12
+  },
+
+  bankDetails: {
+    accountNumber: { type: String, trim: true },
+    ifscCode: { type: String, trim: true },
+    bankName: { type: String, trim: true },
+    branchName: { type: String, trim: true }
+  },
+
+  documents: {
+    aadhaarDocument: { type: String, default: '' },
+    incomeCertificate: { type: String, default: '' },
+    categoryCertificate: { type: String, default: '' }
   }
 
 }, {

@@ -1,5 +1,6 @@
 import { generateToken } from '../middleware/auth.js';
 import { uploadProfileImage as uploadProfileImageToCloudinary } from '../services/cloudinaryService.js';
+import { uploadDocument } from '../services/backblazeService.js';
 import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
@@ -176,6 +177,67 @@ export const uploadProfileImage = async (req, res) => {
 };
 
 /**
+ * @desc    Upload profile documents (Aadhaar, Income Cert, Category Cert)
+ * @route   POST /api/auth/upload-profile-documents
+ * @access  Private
+ */
+export const uploadProfileDocuments = async (req, res) => {
+  try {
+    const updates = {};
+
+    if (req.files?.aadhaarDocument?.[0]) {
+      const file = req.files.aadhaarDocument[0];
+      updates['documents.aadhaarDocument'] = await uploadDocument(
+        file.buffer,
+        'profile-documents',
+        file.originalname || 'aadhaar.pdf'
+      );
+    }
+    if (req.files?.incomeCertificate?.[0]) {
+      const file = req.files.incomeCertificate[0];
+      updates['documents.incomeCertificate'] = await uploadDocument(
+        file.buffer,
+        'profile-documents',
+        file.originalname || 'income-certificate.pdf'
+      );
+    }
+    if (req.files?.categoryCertificate?.[0]) {
+      const file = req.files.categoryCertificate[0];
+      updates['documents.categoryCertificate'] = await uploadDocument(
+        file.buffer,
+        'profile-documents',
+        file.originalname || 'category-certificate.pdf'
+      );
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid documents uploaded'
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Documents uploaded successfully',
+      data: user
+    });
+  } catch (error) {
+    console.error('Profile documents upload error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to upload documents'
+    });
+  }
+};
+
+/**
  * @desc    Update user profile
  * @route   PUT /api/auth/profile
  * @access  Private
@@ -198,7 +260,14 @@ export const updateProfile = async (req, res) => {
       religion: req.body.religion,
       disability: req.body.disability,
       occupation: req.body.occupation,
-      profileImage: req.body.profileImage
+      profileImage: req.body.profileImage,
+      aadhaarNumber: req.body.aadhaarNumber,
+      bankDetails: req.body.bankDetails ? {
+        accountNumber: req.body.bankDetails.accountNumber,
+        ifscCode: req.body.bankDetails.ifscCode,
+        bankName: req.body.bankDetails.bankName,
+        branchName: req.body.bankDetails.branchName
+      } : undefined
     };
 
     // Remove undefined fields

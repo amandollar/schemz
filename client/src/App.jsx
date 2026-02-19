@@ -27,6 +27,9 @@ import MySchemes from './pages/organizer/MySchemes';
 import EditScheme from './pages/organizer/EditScheme';
 import SchemeApplications from './pages/organizer/SchemeApplications';
 
+// Shared Pages
+import SupportQueries from './pages/shared/SupportQueries';
+
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
 import PendingSchemes from './pages/admin/PendingSchemes';
@@ -146,6 +149,14 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/organizer/support-queries"
+              element={
+                <ProtectedRoute allowedRoles={['organizer']}>
+                  <SupportQueries />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Admin Routes */}
             <Route
@@ -185,6 +196,14 @@ function AppContent() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AllApplications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/support-queries"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <SupportQueries />
                 </ProtectedRoute>
               }
             />
