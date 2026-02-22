@@ -112,6 +112,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /** Update user from API response (e.g. after document upload) - avoids refetch delay */
+  const setUserFromResponse = (userData) => {
+    if (userData) setUser(userData);
+  };
+
   const value = {
   user,
   loading,
@@ -120,6 +125,7 @@ export const AuthProvider = ({ children }) => {
   logout,
   updateUserProfile,
   refreshUser,
+  setUserFromResponse,
   googleAuth, 
   isAuthenticated: !!user,
   isUser: user?.role === 'user',

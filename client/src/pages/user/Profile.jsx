@@ -19,9 +19,15 @@ const STATES = [
 ];
 
 const Profile = () => {
-  const { user, updateUserProfile, refreshUser } = useAuth();
+  const { user, updateUserProfile, refreshUser, setUserFromResponse } = useAuth();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [pincodeLookupLoading, setPincodeLookupLoading] = useState(false);
+  const [pendingDocs, setPendingDocs] = useState({
+    aadhaarDocument: null,
+    incomeCertificate: null,
+    categoryCertificate: null,
+  });
   
   // Initialize form data from user, and update when user changes
   const [formData, setFormData] = useState({
@@ -39,7 +45,7 @@ const Profile = () => {
     income: user?.income || '',
     occupation: user?.occupation || '',
     education: user?.education || '',
-    disability: user?.disability || false,
+    disability: user?.disability && user.disability !== 'None',
     profileImage: user?.profileImage || '',
     aadhaarNumber: user?.aadhaarNumber || '',
     accountNumber: user?.bankDetails?.accountNumber || '',
@@ -66,7 +72,7 @@ const Profile = () => {
         income: user.income || '',
         occupation: user.occupation || '',
         education: user.education || '',
-        disability: user.disability || false,
+        disability: user.disability && user.disability !== 'None',
         profileImage: user.profileImage || '',
         aadhaarNumber: user.aadhaarNumber || '',
         accountNumber: user.bankDetails?.accountNumber || '',
@@ -83,6 +89,32 @@ const Profile = () => {
       ...formData,
       [name]: type === 'checkbox' ? checked : value,
     });
+  };
+
+  const fetchPincodeDetails = async () => {
+    const pin = formData.pinCode?.trim();
+    if (!pin || pin.length !== 6 || !/^\d{6}$/.test(pin)) return;
+
+    setPincodeLookupLoading(true);
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+      const data = await res.json();
+      if (data?.[0]?.Status === 'Success' && data[0].PostOffice?.length > 0) {
+        const first = data[0].PostOffice[0];
+        setFormData(prev => ({
+          ...prev,
+          state: first.State || prev.state,
+          district: first.District || prev.district,
+        }));
+        toast.success('Location auto-filled from PIN code');
+      } else {
+        toast.warning('PIN code not found. Please enter state and district manually.');
+      }
+    } catch {
+      toast.error('Could not fetch PIN details. Please enter manually.');
+    } finally {
+      setPincodeLookupLoading(false);
+    }
   };
 
   const handleImageUpload = async (e) => {
@@ -130,10 +162,9 @@ const Profile = () => {
     }
   };
 
-  const handleDocumentUpload = async (e, docType) => {
+  const handleFileSelect = (e, docType) => {
     const file = e.target.files[0];
     if (!file) return;
-
     if (file.size > 5 * 1024 * 1024) {
       toast.error('File size should be less than 5MB');
       return;
@@ -143,21 +174,31 @@ const Profile = () => {
       toast.error('Only PDF, JPG, JPEG, and PNG files are allowed');
       return;
     }
+    setPendingDocs(prev => ({ ...prev, [docType]: file }));
+    e.target.value = '';
+  };
+
+  const handleDocumentUpload = async (docType) => {
+    const file = pendingDocs[docType];
+    if (!file) {
+      toast.error('Please select a file first');
+      return;
+    }
 
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append(docType, file);
       const response = await authAPI.uploadProfileDocuments(fd);
-      if (response.data.success) {
-        await refreshUser();
+      if (response.data.success && response.data.data) {
+        setUserFromResponse(response.data.data);
+        setPendingDocs(prev => ({ ...prev, [docType]: null }));
         toast.success(`${docType.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())} uploaded successfully!`);
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Upload failed');
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
   };
 
@@ -170,33 +211,39 @@ const Profile = () => {
       ...formData,
       age: formData.age ? parseInt(formData.age) : undefined,
       income: formData.income ? parseInt(formData.income) : undefined,
-      bankDetails: (formData.accountNumber || formData.ifscCode || formData.bankName || formData.branchName) ? {
-        accountNumber: formData.accountNumber || undefined,
-        ifscCode: formData.ifscCode || undefined,
-        bankName: formData.bankName || undefined,
-        branchName: formData.branchName || undefined,
-      } : undefined,
+      // Convert disability checkbox (boolean) to User model enum (string)
+      disability: formData.disability ? 'Physical' : 'None',
+      bankDetails: {
+        accountNumber: formData.accountNumber || '',
+        ifscCode: formData.ifscCode || '',
+        bankName: formData.bankName || '',
+        branchName: formData.branchName || '',
+      },
     };
 
-    // Remove flat bank fields and empty strings
+    // Remove flat bank fields
     delete profileData.accountNumber;
     delete profileData.ifscCode;
     delete profileData.bankName;
     delete profileData.branchName;
+
+    // Remove empty bankDetails if all fields are empty (allows clearing)
+    if (!profileData.bankDetails.accountNumber && !profileData.bankDetails.ifscCode &&
+        !profileData.bankDetails.bankName && !profileData.bankDetails.branchName) {
+      profileData.bankDetails = { accountNumber: '', ifscCode: '', bankName: '', branchName: '' };
+    }
+
+    // Remove empty strings (but keep bankDetails for explicit clearing)
     Object.keys(profileData).forEach(key => {
-      if (profileData[key] === '') {
+      if (key !== 'bankDetails' && profileData[key] === '') {
         delete profileData[key];
       }
     });
 
     const result = await updateUserProfile(profileData);
-    
     if (result.success) {
-      toast.success('Profile updated successfully!');
-      // Refresh form data with updated user data
-      // The AuthContext will update the user, which will trigger Dashboard refresh
+      // AuthContext already shows toast; user state updates trigger form sync via useEffect
     }
-    
     setLoading(false);
   };
 
@@ -388,7 +435,41 @@ const Profile = () => {
               <MapPin className="mr-2 text-accent-600" size={20} />
               Location Details
             </h2>
+            <p className="text-sm text-gov-600 mb-4">
+              Enter your PIN code first — we&apos;ll auto-fill state and district for you.
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="label">PIN Code</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    name="pinCode"
+                    value={formData.pinCode}
+                    onChange={handleChange}
+                    onBlur={() => formData.pinCode?.length === 6 && fetchPincodeDetails()}
+                    className="input flex-1"
+                    placeholder="6-digit PIN code"
+                    pattern="[0-9]{6}"
+                    maxLength="6"
+                    inputMode="numeric"
+                  />
+                  <button
+                    type="button"
+                    onClick={fetchPincodeDetails}
+                    disabled={pincodeLookupLoading || formData.pinCode?.length !== 6}
+                    className="btn-secondary whitespace-nowrap flex items-center"
+                    title="Auto-fill state & district from PIN"
+                  >
+                    {pincodeLookupLoading ? (
+                      <span className="animate-spin">⟳</span>
+                    ) : (
+                      <>Lookup</>
+                    )}
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="label">State</label>
                 <select
@@ -412,21 +493,7 @@ const Profile = () => {
                   value={formData.district}
                   onChange={handleChange}
                   className="input"
-                  placeholder="Enter your district"
-                />
-              </div>
-
-              <div>
-                <label className="label">PIN Code</label>
-                <input
-                  type="text"
-                  name="pinCode"
-                  value={formData.pinCode}
-                  onChange={handleChange}
-                  className="input"
-                  placeholder="6-digit PIN code"
-                  pattern="[0-9]{6}"
-                  maxLength="6"
+                  placeholder="Auto-filled from PIN or enter manually"
                 />
               </div>
             </div>
@@ -605,84 +672,8 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* Common Documents */}
-          <div className="card">
-            <h2 className="text-lg font-semibold text-gov-900 mb-4 flex items-center">
-              <FileText className="mr-2 text-accent-600" size={20} />
-              Common Documents
-            </h2>
-            <p className="text-sm text-gov-600 mb-4">
-              Upload these documents once. They will be used automatically when you apply for schemes.
-            </p>
-            <div className="space-y-4">
-              <div>
-                <label className="label">Aadhaar Document</label>
-                <div className="flex items-center gap-4">
-                  <label className="flex-1 flex items-center justify-center px-4 py-3 border-2 border-dashed border-gov-300 rounded-lg hover:border-accent-500 cursor-pointer transition-colors">
-                    <Upload size={20} className="text-gov-400 mr-2" />
-                    <span className="text-sm text-gov-600">
-                      {user?.documents?.aadhaarDocument ? 'Uploaded ✓' : 'Choose file (PDF, JPG, PNG)'}
-                    </span>
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleDocumentUpload(e, 'aadhaarDocument')}
-                      className="hidden"
-                      disabled={uploading}
-                    />
-                  </label>
-                  {user?.documents?.aadhaarDocument && (
-                    <a href={user.documents.aadhaarDocument} target="_blank" rel="noopener noreferrer" className="text-sm text-accent-600 hover:underline">View</a>
-                  )}
-                </div>
-              </div>
-              <div>
-                <label className="label">Income Certificate</label>
-                <div className="flex items-center gap-4">
-                  <label className="flex-1 flex items-center justify-center px-4 py-3 border-2 border-dashed border-gov-300 rounded-lg hover:border-accent-500 cursor-pointer transition-colors">
-                    <Upload size={20} className="text-gov-400 mr-2" />
-                    <span className="text-sm text-gov-600">
-                      {user?.documents?.incomeCertificate ? 'Uploaded ✓' : 'Choose file (PDF, JPG, PNG)'}
-                    </span>
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleDocumentUpload(e, 'incomeCertificate')}
-                      className="hidden"
-                      disabled={uploading}
-                    />
-                  </label>
-                  {user?.documents?.incomeCertificate && (
-                    <a href={user.documents.incomeCertificate} target="_blank" rel="noopener noreferrer" className="text-sm text-accent-600 hover:underline">View</a>
-                  )}
-                </div>
-              </div>
-              <div>
-                <label className="label">Category Certificate (SC/ST/OBC/EWS)</label>
-                <div className="flex items-center gap-4">
-                  <label className="flex-1 flex items-center justify-center px-4 py-3 border-2 border-dashed border-gov-300 rounded-lg hover:border-accent-500 cursor-pointer transition-colors">
-                    <Upload size={20} className="text-gov-400 mr-2" />
-                    <span className="text-sm text-gov-600">
-                      {user?.documents?.categoryCertificate ? 'Uploaded ✓' : 'Choose file (PDF, JPG, PNG)'}
-                    </span>
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleDocumentUpload(e, 'categoryCertificate')}
-                      className="hidden"
-                      disabled={uploading}
-                    />
-                  </label>
-                  {user?.documents?.categoryCertificate && (
-                    <a href={user.documents.categoryCertificate} target="_blank" rel="noopener noreferrer" className="text-sm text-accent-600 hover:underline">View</a>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <div className="flex justify-end space-x-4">
+          {/* Submit Button - Save Profile (text fields only) */}
+          <div className="flex justify-end">
             <button
               type="submit"
               disabled={loading}
@@ -693,6 +684,115 @@ const Profile = () => {
             </button>
           </div>
         </form>
+
+        {/* Documents Section - Separate from form */}
+        <div className="card mt-6">
+          <h2 className="text-lg font-semibold text-gov-900 mb-4 flex items-center">
+            <FileText className="mr-2 text-accent-600" size={20} />
+            Common Documents
+          </h2>
+          <p className="text-sm text-gov-600 mb-4">
+            Upload these documents once. They will be used automatically when you apply for schemes.
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label className="label">Aadhaar Document</label>
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="flex-1 min-w-[200px] flex items-center justify-center px-4 py-3 border-2 border-dashed border-gov-300 rounded-lg hover:border-accent-500 cursor-pointer transition-colors">
+                  <Upload size={20} className="text-gov-400 mr-2" />
+                  <span className="text-sm text-gov-600">
+                    {user?.documents?.aadhaarDocument ? 'Uploaded ✓' : pendingDocs.aadhaarDocument ? pendingDocs.aadhaarDocument.name : 'Choose file (PDF, JPG, PNG)'}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileSelect(e, 'aadhaarDocument')}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                </label>
+                {user?.documents?.aadhaarDocument && (
+                  <a href={user.documents.aadhaarDocument} target="_blank" rel="noopener noreferrer" className="text-sm text-accent-600 hover:underline">View</a>
+                )}
+                {pendingDocs.aadhaarDocument && (
+                  <button
+                    type="button"
+                    onClick={() => handleDocumentUpload('aadhaarDocument')}
+                    disabled={uploading}
+                    className="btn-primary flex items-center"
+                  >
+                    <Upload className="mr-2" size={16} />
+                    {uploading ? 'Uploading...' : 'Upload'}
+                  </button>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="label">Income Certificate</label>
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="flex-1 min-w-[200px] flex items-center justify-center px-4 py-3 border-2 border-dashed border-gov-300 rounded-lg hover:border-accent-500 cursor-pointer transition-colors">
+                  <Upload size={20} className="text-gov-400 mr-2" />
+                  <span className="text-sm text-gov-600">
+                    {user?.documents?.incomeCertificate ? 'Uploaded ✓' : pendingDocs.incomeCertificate ? pendingDocs.incomeCertificate.name : 'Choose file (PDF, JPG, PNG)'}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileSelect(e, 'incomeCertificate')}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                </label>
+                {user?.documents?.incomeCertificate && (
+                  <a href={user.documents.incomeCertificate} target="_blank" rel="noopener noreferrer" className="text-sm text-accent-600 hover:underline">View</a>
+                )}
+                {pendingDocs.incomeCertificate && (
+                  <button
+                    type="button"
+                    onClick={() => handleDocumentUpload('incomeCertificate')}
+                    disabled={uploading}
+                    className="btn-primary flex items-center"
+                  >
+                    <Upload className="mr-2" size={16} />
+                    {uploading ? 'Uploading...' : 'Upload'}
+                  </button>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="label">Category Certificate (SC/ST/OBC/EWS)</label>
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="flex-1 min-w-[200px] flex items-center justify-center px-4 py-3 border-2 border-dashed border-gov-300 rounded-lg hover:border-accent-500 cursor-pointer transition-colors">
+                  <Upload size={20} className="text-gov-400 mr-2" />
+                  <span className="text-sm text-gov-600">
+                    {user?.documents?.categoryCertificate ? 'Uploaded ✓' : pendingDocs.categoryCertificate ? pendingDocs.categoryCertificate.name : 'Choose file (PDF, JPG, PNG)'}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileSelect(e, 'categoryCertificate')}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                </label>
+                {user?.documents?.categoryCertificate && (
+                  <a href={user.documents.categoryCertificate} target="_blank" rel="noopener noreferrer" className="text-sm text-accent-600 hover:underline">View</a>
+                )}
+                {pendingDocs.categoryCertificate && (
+                  <button
+                    type="button"
+                    onClick={() => handleDocumentUpload('categoryCertificate')}
+                    disabled={uploading}
+                    className="btn-primary flex items-center"
+                  >
+                    <Upload className="mr-2" size={16} />
+                    {uploading ? 'Uploading...' : 'Upload'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Consent Notice */}
         <div className="mt-6 p-4 bg-gov-50 border border-gov-200 rounded-lg">
