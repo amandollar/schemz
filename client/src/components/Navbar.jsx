@@ -98,6 +98,12 @@ const Navbar = () => {
                 <>
                   <NavLink to="/user/matched-schemes">My Matches</NavLink>
                   <NavLink to="/user/all-schemes">Browse Schemes</NavLink>
+                  <NavLink to="/user/support-queries">
+                    <div className="flex items-center space-x-1.5">
+                      <MessageCircle size={16} />
+                      <span>Support</span>
+                    </div>
+                  </NavLink>
                   <NavLink to="/user/profile">
                     <div className="flex items-center space-x-1.5">
                       <Settings size={16} />
@@ -245,6 +251,7 @@ const Navbar = () => {
                 <>
                   <NavLink to="/user/matched-schemes" mobile>My Matches</NavLink>
                   <NavLink to="/user/all-schemes" mobile>Browse Schemes</NavLink>
+                  <NavLink to="/user/support-queries" mobile>Support</NavLink>
                   <NavLink to="/user/profile" mobile>Profile</NavLink>
                 </>
               )}

@@ -42,6 +42,11 @@ const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
     otherDocuments: []
   });
 
+  // Reset profile check when modal closes
+  useEffect(() => {
+    if (!isOpen) setProfileCheck(null);
+  }, [isOpen]);
+
   // Check profile completeness when modal opens
   useEffect(() => {
     if (user && isOpen) {
@@ -77,6 +82,11 @@ const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
 
   const handleMultipleFilesChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
+    
+    if (selectedFiles.length > 5) {
+      toast.error('Maximum 5 files allowed for other documents');
+      return;
+    }
     
     // Validate each file
     for (const file of selectedFiles) {
@@ -191,6 +201,18 @@ const ApplySchemeModal = ({ scheme, isOpen, onClose, onSuccess }) => {
   };
 
   if (!isOpen) return null;
+
+  // Show loading while checking profile
+  if (user && profileCheck === null) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg p-8 flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-accent-600" />
+          <p className="text-gov-600">Checking profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show profile completion warning if profile is incomplete
   if (profileCheck && !profileCheck.isValid) {

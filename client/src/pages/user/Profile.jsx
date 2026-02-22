@@ -21,7 +21,8 @@ const STATES = [
 const Profile = () => {
   const { user, updateUserProfile, refreshUser, setUserFromResponse } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(null); // 'aadhaarDocument' | 'incomeCertificate' | 'categoryCertificate' | null
   const [pincodeLookupLoading, setPincodeLookupLoading] = useState(false);
   const [pendingDocs, setPendingDocs] = useState({
     aadhaarDocument: null,
@@ -133,7 +134,7 @@ const Profile = () => {
       return;
     }
 
-    setUploading(true);
+    setUploadingImage(true);
 
     try {
       const formData = new FormData();
@@ -158,7 +159,7 @@ const Profile = () => {
       const errorMessage = error.response?.data?.message || 'Failed to upload image. Please try again.';
       toast.error(errorMessage);
     } finally {
-      setUploading(false);
+      setUploadingImage(false);
     }
   };
 
@@ -185,7 +186,7 @@ const Profile = () => {
       return;
     }
 
-    setUploading(true);
+    setUploadingDoc(docType);
     try {
       const fd = new FormData();
       fd.append(docType, file);
@@ -198,7 +199,7 @@ const Profile = () => {
     } catch (error) {
       toast.error(error.response?.data?.message || 'Upload failed');
     } finally {
-      setUploading(false);
+      setUploadingDoc(null);
     }
   };
 
@@ -291,7 +292,7 @@ const Profile = () => {
                     <User className="text-gov-400" size={48} />
                   )}
                 </div>
-                {uploading && (
+                {uploadingImage && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                   </div>
@@ -302,13 +303,13 @@ const Profile = () => {
               <div>
                 <label className="btn-secondary cursor-pointer inline-flex items-center">
                   <Upload className="mr-2" size={18} />
-                  {uploading ? 'Uploading...' : 'Upload Photo'}
+                  {uploadingImage ? 'Uploading...' : 'Upload Photo'}
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleImageUpload}
                     className="hidden"
-                    disabled={uploading}
+                    disabled={uploadingImage}
                   />
                 </label>
                 <p className="text-xs text-gov-600 mt-2">
@@ -708,7 +709,7 @@ const Profile = () => {
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={(e) => handleFileSelect(e, 'aadhaarDocument')}
                     className="hidden"
-                    disabled={uploading}
+                    disabled={uploadingDoc === 'aadhaarDocument'}
                   />
                 </label>
                 {user?.documents?.aadhaarDocument && (
@@ -718,11 +719,11 @@ const Profile = () => {
                   <button
                     type="button"
                     onClick={() => handleDocumentUpload('aadhaarDocument')}
-                    disabled={uploading}
+                    disabled={uploadingDoc === 'aadhaarDocument'}
                     className="btn-primary flex items-center"
                   >
                     <Upload className="mr-2" size={16} />
-                    {uploading ? 'Uploading...' : 'Upload'}
+                    {uploadingDoc === 'aadhaarDocument' ? 'Uploading...' : 'Upload'}
                   </button>
                 )}
               </div>
@@ -740,7 +741,7 @@ const Profile = () => {
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={(e) => handleFileSelect(e, 'incomeCertificate')}
                     className="hidden"
-                    disabled={uploading}
+                    disabled={uploadingDoc === 'incomeCertificate'}
                   />
                 </label>
                 {user?.documents?.incomeCertificate && (
@@ -750,11 +751,11 @@ const Profile = () => {
                   <button
                     type="button"
                     onClick={() => handleDocumentUpload('incomeCertificate')}
-                    disabled={uploading}
+                    disabled={uploadingDoc === 'incomeCertificate'}
                     className="btn-primary flex items-center"
                   >
                     <Upload className="mr-2" size={16} />
-                    {uploading ? 'Uploading...' : 'Upload'}
+                    {uploadingDoc === 'incomeCertificate' ? 'Uploading...' : 'Upload'}
                   </button>
                 )}
               </div>
@@ -772,7 +773,7 @@ const Profile = () => {
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={(e) => handleFileSelect(e, 'categoryCertificate')}
                     className="hidden"
-                    disabled={uploading}
+                    disabled={uploadingDoc === 'categoryCertificate'}
                   />
                 </label>
                 {user?.documents?.categoryCertificate && (
@@ -782,11 +783,11 @@ const Profile = () => {
                   <button
                     type="button"
                     onClick={() => handleDocumentUpload('categoryCertificate')}
-                    disabled={uploading}
+                    disabled={uploadingDoc === 'categoryCertificate'}
                     className="btn-primary flex items-center"
                   >
                     <Upload className="mr-2" size={16} />
-                    {uploading ? 'Uploading...' : 'Upload'}
+                    {uploadingDoc === 'categoryCertificate' ? 'Uploading...' : 'Upload'}
                   </button>
                 )}
               </div>

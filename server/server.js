@@ -18,6 +18,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import applicationRoutes from './routes/applicationRoutes.js';
 import schemeApplicationRoutes from './routes/schemeApplicationRoutes.js';
 import supportQueryRoutes from './routes/supportQueryRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 
 // Connect to database
 connectDB();
@@ -85,6 +86,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/application', applicationRoutes);
 app.use('/api/scheme-applications', schemeApplicationRoutes);
 app.use('/api/support-queries', supportQueryRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

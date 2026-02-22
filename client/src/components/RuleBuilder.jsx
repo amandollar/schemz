@@ -1,5 +1,58 @@
-import { Plus, Trash2 } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
+import { Plus, Trash2, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+
+/** Custom multi-select that closes on outside click (unlike native select multiple) */
+const MultiSelectDropdown = ({ options, value = [], onChange, placeholder = 'Select...', className = '' }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selected = Array.isArray(value) ? value : [];
+  const toggle = (opt) => {
+    const next = selected.includes(opt) ? selected.filter((o) => o !== opt) : [...selected, opt];
+    onChange(next);
+  };
+
+  return (
+    <div ref={ref} className={`relative ${className}`}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="input text-sm w-full text-left flex items-center justify-between gap-2 min-h-[42px]"
+      >
+        <span className={selected.length ? 'text-slate-800' : 'text-slate-500'}>
+          {selected.length ? selected.join(', ') : placeholder}
+        </span>
+        <ChevronDown size={16} className={`text-slate-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto py-1">
+          {options.map((opt) => (
+            <label
+              key={opt}
+              className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 cursor-pointer text-sm"
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(opt)}
+                onChange={() => toggle(opt)}
+                className="rounded border-slate-300"
+              />
+              {opt}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const FIELD_CONFIG = {
   age: { label: 'Age', type: 'number' },
@@ -166,22 +219,12 @@ const RuleBuilder = ({ rules = [], onChange }) => {
     if (type === 'state') {
       if (isArrayOperator(rule.operator)) {
         return (
-          <div className="space-y-2">
-            <select
-              multiple
-              value={Array.isArray(rule.value) ? rule.value : []}
-              onChange={(e) => {
-                const options = Array.from(e.target.selectedOptions, option => option.value);
-                updateRule(index, 'value', options);
-              }}
-              className="input text-sm min-h-[100px]"
-            >
-              {states.map(state => (
-                <option key={state} value={state}>{state}</option>
-              ))}
-            </select>
-            <p className="text-xs text-slate-500">Hold Ctrl/Cmd to select multiple</p>
-          </div>
+          <MultiSelectDropdown
+            options={states}
+            value={Array.isArray(rule.value) ? rule.value : []}
+            onChange={(options) => updateRule(index, 'value', options)}
+            placeholder="Select states..."
+          />
         );
       }
       return (
@@ -203,22 +246,12 @@ const RuleBuilder = ({ rules = [], onChange }) => {
     if (type === 'enum' && fieldConfig?.options) {
       if (isArrayOperator(rule.operator)) {
         return (
-          <div className="space-y-2">
-            <select
-              multiple
-              value={Array.isArray(rule.value) ? rule.value : []}
-              onChange={(e) => {
-                const options = Array.from(e.target.selectedOptions, option => option.value);
-                updateRule(index, 'value', options);
-              }}
-              className="input text-sm min-h-[100px]"
-            >
-              {fieldConfig.options.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-            <p className="text-xs text-slate-500">Hold Ctrl/Cmd to select multiple</p>
-          </div>
+          <MultiSelectDropdown
+            options={fieldConfig.options}
+            value={Array.isArray(rule.value) ? rule.value : []}
+            onChange={(options) => updateRule(index, 'value', options)}
+            placeholder="Select..."
+          />
         );
       }
       return (

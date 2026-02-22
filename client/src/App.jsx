@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -36,6 +36,18 @@ import PendingSchemes from './pages/admin/PendingSchemes';
 import AdminAllSchemes from './pages/admin/AllSchemes';
 import PendingApplications from './pages/admin/PendingApplications';
 import AllApplications from './pages/admin/AllApplications';
+
+function CatchAllRedirect() {
+  const { user } = useAuth();
+  const to = user
+    ? user.role === 'admin'
+      ? '/admin/dashboard'
+      : user.role === 'organizer'
+        ? '/organizer/dashboard'
+        : '/user/dashboard'
+    : '/login';
+  return <Navigate to={to} replace />;
+}
 
 function AppContent() {
   const location = useLocation();
@@ -104,6 +116,14 @@ function AppContent() {
               element={
                 <ProtectedRoute allowedRoles={['user']}>
                   <MyApplications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/user/support-queries"
+              element={
+                <ProtectedRoute allowedRoles={['user']}>
+                  <SupportQueries />
                 </ProtectedRoute>
               }
             />
@@ -208,8 +228,8 @@ function AppContent() {
               }
             />
 
-            {/* Catch all */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            {/* Catch all - authenticated users go to dashboard, others to login */}
+            <Route path="*" element={<CatchAllRedirect />} />
           </Routes>
 
           {/* Toast Notifications */}

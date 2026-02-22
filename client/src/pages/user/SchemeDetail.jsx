@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { schemeAPI, schemeApplicationAPI } from '../../services/api';
 import { ArrowLeft, Building2, FileText, CheckCircle, Send } from 'lucide-react';
@@ -7,6 +7,8 @@ import ApplySchemeModal from '../../components/ApplySchemeModal';
 const SchemeDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const idRef = useRef(id);
+  idRef.current = id;
   const [scheme, setScheme] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasApplied, setHasApplied] = useState(false);
@@ -19,13 +21,20 @@ const SchemeDetail = () => {
   }, [id]);
 
   const fetchSchemeDetail = async () => {
+    const schemeId = id;
     try {
-      const response = await schemeAPI.getSchemeById(id);
-      setScheme(response.data.data);
+      const response = await schemeAPI.getSchemeById(schemeId);
+      if (idRef.current === schemeId) {
+        setScheme(response.data.data);
+      }
     } catch (error) {
-      console.error('Error fetching scheme detail:', error);
+      if (idRef.current === schemeId) {
+        console.error('Error fetching scheme detail:', error);
+      }
     } finally {
-      setLoading(false);
+      if (idRef.current === schemeId) {
+        setLoading(false);
+      }
     }
   };
 

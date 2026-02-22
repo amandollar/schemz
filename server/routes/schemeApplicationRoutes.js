@@ -69,10 +69,11 @@ const handleMulterError = (err, req, res, next) => {
   next();
 };
 
-// User routes
+// User routes (only citizens can submit scheme applications)
 router.post(
   '/',
   protect,
+  authorize('user'),
   upload.fields([
     { name: 'marksheet', maxCount: 1 },
     { name: 'incomeCertificate', maxCount: 1 },

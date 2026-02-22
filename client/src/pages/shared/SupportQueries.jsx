@@ -37,6 +37,7 @@ const SupportQueries = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const messagesEndRef = useRef(null);
   const socketRef = useRef(null);
+  const selectedIdRef = useRef(null);
 
   const isAdmin = user?.role === 'admin';
 
@@ -56,9 +57,13 @@ const SupportQueries = () => {
   const fetchQueryDetail = async (id) => {
     try {
       const res = await supportQueryAPI.getById(id);
-      setSelectedQuery(res.data.data);
+      if (selectedIdRef.current === id) {
+        setSelectedQuery(res.data.data);
+      }
     } catch (err) {
-      toast.error('Failed to load query');
+      if (selectedIdRef.current === id) {
+        toast.error('Failed to load query');
+      }
     }
   };
 
@@ -68,7 +73,9 @@ const SupportQueries = () => {
 
   useEffect(() => {
     if (selectedQuery) {
+      selectedIdRef.current = selectedQuery._id;
       fetchQueryDetail(selectedQuery._id);
+      return () => { selectedIdRef.current = null; };
     }
   }, [selectedQuery?._id]);
 
@@ -173,6 +180,12 @@ const SupportQueries = () => {
     });
   };
 
+  const formatRole = (role) => {
+    if (!role) return '';
+    const map = { user: 'Citizen', organizer: 'Organizer', admin: 'Admin' };
+    return map[role] || role;
+  };
+
   const isOwnMessage = (msg) => msg.sender?._id === user?._id || msg.sender === user?._id;
 
   if (loading) {
@@ -191,7 +204,7 @@ const SupportQueries = () => {
           Support Queries
         </h1>
         <p className="text-gov-600 mt-1">
-          {isAdmin ? 'View and respond to organizer queries' : 'Chat with admin for support'}
+          {isAdmin ? 'View and respond to support queries' : 'Chat with admin for support'}
         </p>
       </div>
 
@@ -302,7 +315,18 @@ const SupportQueries = () => {
                     )}
                   </div>
                   <p className="text-xs text-gov-500 mt-1">
-                    {isAdmin ? q.createdBy?.name : ''} • {formatDate(q.updatedAt)}
+                    {isAdmin ? (
+                      <>
+                        {q.createdBy?.name}
+                        {q.createdBy?.role && (
+                          <span className="ml-1 px-1.5 py-0.5 bg-gov-200 text-gov-700 rounded text-[10px] font-medium">
+                            {formatRole(q.createdBy.role)}
+                          </span>
+                        )}
+                        {' • '}
+                      </>
+                    ) : ''}
+                    {formatDate(q.updatedAt)}
                   </p>
                 </button>
               ))
@@ -325,8 +349,17 @@ const SupportQueries = () => {
                   <div>
                     <h3 className="font-semibold text-gov-900">{selectedQuery.subject}</h3>
                     <p className="text-sm text-gov-600">
-                      {isAdmin && selectedQuery.createdBy?.name}
-                      {selectedQuery.createdBy?.email && ` • ${selectedQuery.createdBy.email}`}
+                      {isAdmin && (
+                        <>
+                          {selectedQuery.createdBy?.name}
+                          {selectedQuery.createdBy?.role && (
+                            <span className="ml-2 px-2 py-0.5 bg-accent-100 text-accent-700 rounded text-xs font-medium">
+                              {formatRole(selectedQuery.createdBy.role)}
+                            </span>
+                          )}
+                          {selectedQuery.createdBy?.email && ` • ${selectedQuery.createdBy.email}`}
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>

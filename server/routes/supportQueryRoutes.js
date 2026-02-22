@@ -11,8 +11,8 @@ import {
 
 const router = express.Router();
 
-// All routes require organizer or admin
-router.use(protect, authorize('organizer', 'admin'));
+// All routes require user, organizer, or admin (citizens can also chat with admin)
+router.use(protect, authorize('user', 'organizer', 'admin'));
 
 router.post('/', createQuery);
 router.get('/', getQueries);

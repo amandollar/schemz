@@ -26,7 +26,7 @@ export const createQuery = async (req, res) => {
     });
 
     const populated = await SupportQuery.findById(query._id)
-      .populate('createdBy', 'name email')
+      .populate('createdBy', 'name email role')
       .populate('messages.sender', 'name email');
 
     res.status(201).json({
@@ -51,7 +51,7 @@ export const getQueries = async (req, res) => {
   try {
     let filter = {};
 
-    if (req.user.role === 'organizer') {
+    if (req.user.role === 'organizer' || req.user.role === 'user') {
       filter.createdBy = req.user._id;
     }
     // Admin sees all
@@ -62,7 +62,7 @@ export const getQueries = async (req, res) => {
     }
 
     const queries = await SupportQuery.find(filter)
-      .populate('createdBy', 'name email')
+      .populate('createdBy', 'name email role')
       .sort('-updatedAt');
 
     res.json({
@@ -86,7 +86,7 @@ export const getQueries = async (req, res) => {
 export const getQueryById = async (req, res) => {
   try {
     const query = await SupportQuery.findById(req.params.id)
-      .populate('createdBy', 'name email')
+      .populate('createdBy', 'name email role')
       .populate('messages.sender', 'name email')
       .populate('resolvedBy', 'name email');
 
@@ -97,8 +97,8 @@ export const getQueryById = async (req, res) => {
       });
     }
 
-    // Organizer can only view their own; Admin can view all
-    if (req.user.role === 'organizer' && query.createdBy._id.toString() !== req.user._id.toString()) {
+    // Organizer/User can only view their own; Admin can view all
+    if ((req.user.role === 'organizer' || req.user.role === 'user') && query.createdBy._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to view this query'
@@ -150,8 +150,8 @@ export const sendMessage = async (req, res) => {
       });
     }
 
-    // Organizer can only message their own; Admin can message any
-    if (req.user.role === 'organizer' && query.createdBy.toString() !== req.user._id.toString()) {
+    // Organizer/User can only message their own; Admin can message any
+    if ((req.user.role === 'organizer' || req.user.role === 'user') && query.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to message this query'
@@ -165,7 +165,7 @@ export const sendMessage = async (req, res) => {
     await query.save();
 
     const populated = await SupportQuery.findById(query._id)
-      .populate('createdBy', 'name email')
+      .populate('createdBy', 'name email role')
       .populate('messages.sender', 'name email');
 
     const newMessage = populated.messages[populated.messages.length - 1];
@@ -208,7 +208,7 @@ export const resolveQuery = async (req, res) => {
       },
       { new: true }
     )
-      .populate('createdBy', 'name email')
+      .populate('createdBy', 'name email role')
       .populate('messages.sender', 'name email')
       .populate('resolvedBy', 'name email');
 

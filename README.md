@@ -192,6 +192,9 @@ B2_APPLICATION_KEY=
 B2_BUCKET_NAME=
 B2_ENDPOINT=
 
+# Google AI (Gemini) - for AI Assist when creating schemes
+GOOGLE_GENERATIVE_AI_API_KEY=
+
 # Google OAuth (used by backend to verify tokens)
 GOOGLE_CLIENT_ID=
 ```
@@ -211,6 +214,7 @@ VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id
 | **Cloudinary** | [Sign up](https://cloudinary.com) for profile images |
 | **Backblaze B2** | [Sign up](https://www.backblaze.com/b2/) for document storage; see `server/BACKBLAZE_SETUP.md` |
 | **Google OAuth** | [Google Cloud Console](https://console.cloud.google.com/) → Create OAuth 2.0 Client ID (Web) |
+| **Google AI (Gemini)** | [AI Studio](https://aistudio.google.com/apikey) → Create API key for AI Assist (scheme creation) |
 
 ---
 

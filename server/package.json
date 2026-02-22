@@ -19,6 +19,8 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "@ai-sdk/google": "^3.0.30",
+        "ai": "^6.0.97",
         "backblaze-b2": "^1.7.1",
         "bcryptjs": "^2.4.3",
         "cloudinary": "^2.9.0",
@@ -34,7 +36,8 @@
         "nodemailer": "^8.0.1",
         "passport": "^0.7.0",
         "passport-google-oauth20": "^2.0.0",
-        "socket.io": "^4.8.3"
+        "socket.io": "^4.8.3",
+        "zod": "^4.3.6"
     },
     "devDependencies": {
         "axios": "^1.13.4",

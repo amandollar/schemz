@@ -30,9 +30,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      const url = error.config?.url || '';
+      const isAuthRequest = url.includes('/auth/login') || url.includes('/auth/register');
+      if (!isAuthRequest) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -94,6 +98,11 @@ export const adminAPI = {
   getAllApplications: (status) => api.get('/admin/applications', { params: { status } }),
   approveApplication: (id) => api.post(`/admin/application/${id}/approve`),
   rejectApplication: (id, data) => api.post(`/admin/application/${id}/reject`, data),
+};
+
+// AI API (Organizer - scheme generation)
+export const aiAPI = {
+  generateScheme: (prompt) => api.post('/ai/generate-scheme', { prompt }),
 };
 
 // Support Query API (Organizer & Admin chat with admin)

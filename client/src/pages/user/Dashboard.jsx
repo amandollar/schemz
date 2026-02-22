@@ -39,8 +39,15 @@ const UserDashboard = () => {
         }
       }
 
-      const appResponse = await applicationAPI.getApplicationStatus();
-      setApplicationStatus(appResponse.data.data);
+      try {
+        const appResponse = await applicationAPI.getApplicationStatus();
+        setApplicationStatus(appResponse.data.data || null);
+      } catch (appErr) {
+        if (appErr.response?.status !== 404) {
+          console.error('Error fetching application status:', appErr);
+        }
+        setApplicationStatus(null);
+      }
 
       setStats({
         matchedSchemes: matchedCount,
