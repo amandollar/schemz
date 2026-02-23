@@ -65,7 +65,7 @@ const FIELD_CONFIG = {
   education: {
     label: 'Education Level',
     type: 'enum',
-    options: ['10th Pass', '12th Pass', 'Graduate', 'Post Graduate', 'PhD']
+    options: ['Below 10th', '10th Pass', '12th Pass', 'Graduate', 'Post Graduate', 'Doctorate']
   },
   state: { label: 'State', type: 'state' },
   gender: {
@@ -76,7 +76,7 @@ const FIELD_CONFIG = {
   marital_status: {
     label: 'Marital Status',
     type: 'enum',
-    options: ['Single', 'Married', 'Divorced', 'Widowed']
+    options: ['Single', 'Married', 'Widowed', 'Divorced', 'Separated']
   },
   disability: { label: 'Person with Disability', type: 'boolean' },
   occupation: { label: 'Occupation', type: 'string' },
