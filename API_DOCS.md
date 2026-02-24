@@ -1,41 +1,40 @@
 # Schemz API Documentation
 
-Government Scheme Eligibility Platform — REST API Reference
+> **Government Scheme Eligibility Platform** — REST API reference for citizens, organizers, and admins.
 
 ---
 
 ## Base URL
 
-```
-http://localhost:5000/api
-```
-
-Production: `{VITE_API_BASE_URL}/api`
+| Environment | URL |
+|-------------|-----|
+| **Local** | `http://localhost:5000/api` |
+| **Production** | `{VITE_API_BASE_URL}/api` |
 
 ---
 
 ## Authentication
 
-Protected endpoints require a JWT token in the `Authorization` header:
-
-```
-Authorization: Bearer <token>
-```
+> Protected endpoints require a JWT in the request header:
+>
+> ```http
+> Authorization: Bearer <your_token>
+> ```
 
 ### Roles
 
-| Role      | Description                                      |
-|-----------|--------------------------------------------------|
-| `user`    | Citizen — browse schemes, apply, manage profile  |
-| `organizer` | Scheme creator — create/manage schemes          |
-| `admin`   | Platform admin — approve schemes, applications  |
+| Role | Description |
+|------|-------------|
+| `user` | Citizen — browse schemes, apply, manage profile |
+| `organizer` | Scheme creator — create and manage schemes |
+| `admin` | Platform admin — approve schemes and applications |
 
 ---
 
 ## Table of Contents
 
 <details>
-<summary><strong>Click to expand — jump to any endpoint</strong></summary>
+<summary><strong>Jump to any endpoint (click to expand)</strong></summary>
 
 ### [Health](#health)
 - [Check server status](#check-server-status) — `GET /api/health`
@@ -104,11 +103,11 @@ Authorization: Bearer <token>
 
 ### Check server status
 
+`GET` · **Public**
+
 ```http
 GET /api/health
 ```
-
-**Access:** Public
 
 **Response:** `200 OK`
 
@@ -124,16 +123,16 @@ GET /api/health
 
 ## Auth
 
-Base path: `/api/auth`
+**Base path:** `/api/auth`
 
 ### Register
+
+`POST` · **Public**
 
 ```http
 POST /api/auth/register
 Content-Type: application/json
 ```
-
-**Access:** Public
 
 **Request Body:**
 
@@ -173,12 +172,12 @@ Content-Type: application/json
 
 ### Login
 
+`POST` · **Public**
+
 ```http
 POST /api/auth/login
 Content-Type: application/json
 ```
-
-**Access:** Public
 
 **Request Body:**
 
@@ -208,12 +207,12 @@ Content-Type: application/json
 
 ### Google OAuth Login
 
+`POST` · **Public**
+
 ```http
 POST /api/auth/google
 Content-Type: application/json
 ```
-
-**Access:** Public
 
 **Request Body:**
 
@@ -242,12 +241,12 @@ Content-Type: application/json
 
 ### Get current user
 
+`GET` · **Private** (all roles)
+
 ```http
 GET /api/auth/me
 Authorization: Bearer <token>
 ```
-
-**Access:** Private (all roles)
 
 **Response:** `200 OK`
 
@@ -269,13 +268,13 @@ Authorization: Bearer <token>
 
 ### Update profile
 
+`PUT` · **Private** (all roles)
+
 ```http
 PUT /api/auth/profile
 Authorization: Bearer <token>
 Content-Type: application/json
 ```
-
-**Access:** Private (all roles)
 
 **Request Body:** (all fields optional)
 
@@ -319,13 +318,13 @@ Content-Type: application/json
 
 ### Upload profile image
 
+`POST` · **Private** (all roles)
+
 ```http
 POST /api/auth/upload-profile-image
 Authorization: Bearer <token>
 Content-Type: multipart/form-data
 ```
-
-**Access:** Private (all roles)
 
 **Request Body:** Form data with field `image` (file). Max 5MB. Formats: JPEG, PNG, GIF, WebP.
 
@@ -345,13 +344,13 @@ Content-Type: multipart/form-data
 
 ### Upload profile documents
 
+`POST` · **Private** (all roles)
+
 ```http
 POST /api/auth/upload-profile-documents
 Authorization: Bearer <token>
 Content-Type: multipart/form-data
 ```
-
-**Access:** Private (all roles)
 
 **Request Body:** Form data with fields (all optional, at least one required):
 
@@ -377,15 +376,15 @@ Formats: PDF, JPG, JPEG, PNG. Max 5MB per file.
 
 ## Schemes
 
-Base path: `/api/schemes`
+**Base path:** `/api/schemes`
 
 ### Get all approved schemes
+
+`GET` · **Public**
 
 ```http
 GET /api/schemes
 ```
-
-**Access:** Public
 
 **Response:** `200 OK`
 
@@ -411,14 +410,14 @@ GET /api/schemes
 
 ### Get matched schemes (eligibility)
 
+`GET` · **Private** (user only)
+
+Returns schemes the current user is eligible for based on profile and rules.
+
 ```http
 GET /api/schemes/match
 Authorization: Bearer <token>
 ```
-
-**Access:** Private (user only)
-
-Returns schemes the current user is eligible for based on profile and rules.
 
 **Response:** `200 OK`
 
@@ -440,13 +439,13 @@ Returns schemes the current user is eligible for based on profile and rules.
 
 ### Get scheme by ID
 
+`GET` · **Public**
+
+**Parameters:** `id` — MongoDB ObjectId
+
 ```http
 GET /api/schemes/:id
 ```
-
-**Access:** Public
-
-**Parameters:** `id` — MongoDB ObjectId
 
 **Response:** `200 OK`
 
@@ -475,11 +474,11 @@ GET /api/schemes/:id
 
 ## Organizer
 
-Base path: `/api/organizer`
-
-**Access:** All organizer routes require `organizer` role.
+**Base path:** `/api/organizer` · All routes require **organizer** role.
 
 ### Create scheme
+
+`POST` · **Organizer**
 
 ```http
 POST /api/organizer/scheme
@@ -519,6 +518,8 @@ Content-Type: application/json
 
 ### Get organizer schemes
 
+`GET` · **Organizer**
+
 ```http
 GET /api/organizer/schemes
 Authorization: Bearer <token>
@@ -538,13 +539,15 @@ Authorization: Bearer <token>
 
 ### Update scheme
 
+`PUT` · **Organizer**
+
+**Parameters:** `id` — Scheme ID
+
 ```http
 PUT /api/organizer/scheme/:id
 Authorization: Bearer <token>
 Content-Type: application/json
 ```
-
-**Parameters:** `id` — Scheme ID
 
 **Note:** Only draft or rejected schemes can be updated.
 
@@ -556,12 +559,14 @@ Content-Type: application/json
 
 ### Submit scheme for approval
 
+`POST` · **Organizer**
+
+**Parameters:** `id` — Scheme ID
+
 ```http
 POST /api/organizer/scheme/:id/submit
 Authorization: Bearer <token>
 ```
-
-**Parameters:** `id` — Scheme ID
 
 **Note:** Only draft or rejected schemes can be submitted.
 
@@ -581,12 +586,14 @@ Authorization: Bearer <token>
 
 ### Delete scheme
 
+`DELETE` · **Organizer**
+
+**Parameters:** `id` — Scheme ID
+
 ```http
 DELETE /api/organizer/scheme/:id
 Authorization: Bearer <token>
 ```
-
-**Parameters:** `id` — Scheme ID
 
 **Note:** Only draft schemes can be deleted.
 
@@ -603,11 +610,11 @@ Authorization: Bearer <token>
 
 ## Admin
 
-Base path: `/api/admin`
-
-**Access:** All admin routes require `admin` role.
+**Base path:** `/api/admin` · All routes require **admin** role.
 
 ### Get pending schemes
+
+`GET` · **Admin**
 
 ```http
 GET /api/admin/schemes/pending
@@ -628,18 +635,22 @@ Authorization: Bearer <token>
 
 ### Get all schemes
 
+`GET` · **Admin**
+
+**Query params:** `status` (optional) — `draft`, `pending`, `approved`, `rejected`
+
 ```http
 GET /api/admin/schemes?status=pending
 Authorization: Bearer <token>
 ```
-
-**Query params:** `status` (optional) — `draft`, `pending`, `approved`, `rejected`
 
 **Response:** `200 OK`
 
 ---
 
 ### Approve scheme
+
+`POST` · **Admin**
 
 ```http
 POST /api/admin/scheme/:id/approve
@@ -661,6 +672,8 @@ Content-Type: application/json
 
 ### Reject scheme
 
+`POST` · **Admin**
+
 ```http
 POST /api/admin/scheme/:id/reject
 Authorization: Bearer <token>
@@ -681,12 +694,14 @@ Content-Type: application/json
 
 ### Toggle scheme status
 
+`PUT` · **Admin**
+
+**Parameters:** `id` — Scheme ID
+
 ```http
 PUT /api/admin/scheme/:id/toggle
 Authorization: Bearer <token>
 ```
-
-**Parameters:** `id` — Scheme ID
 
 Toggles `active` status for approved schemes.
 
@@ -695,6 +710,8 @@ Toggles `active` status for approved schemes.
 ---
 
 ### Get pending organizer applications
+
+`GET` · **Admin**
 
 ```http
 GET /api/admin/applications/pending
@@ -707,18 +724,22 @@ Authorization: Bearer <token>
 
 ### Get all organizer applications
 
+`GET` · **Admin**
+
+**Query params:** `status` (optional) — `pending`, `approved`, `rejected`
+
 ```http
 GET /api/admin/applications?status=pending
 Authorization: Bearer <token>
 ```
-
-**Query params:** `status` (optional) — `pending`, `approved`, `rejected`
 
 **Response:** `200 OK`
 
 ---
 
 ### Approve organizer application
+
+`POST` · **Admin**
 
 ```http
 POST /api/admin/application/:id/approve
@@ -740,6 +761,8 @@ Content-Type: application/json
 
 ### Reject organizer application
 
+`POST` · **Admin**
+
 ```http
 POST /api/admin/application/:id/reject
 Authorization: Bearer <token>
@@ -760,11 +783,11 @@ Content-Type: application/json
 
 ## Application (Organizer)
 
-Base path: `/api/application`
-
-**Access:** All routes require `user` role.
+**Base path:** `/api/application` · All routes require **user** role.
 
 ### Submit organizer application
+
+`POST` · **User**
 
 ```http
 POST /api/application/organizer
@@ -789,6 +812,8 @@ Content-Type: application/json
 
 ### Get my applications
 
+`GET` · **User**
+
 ```http
 GET /api/application/my-applications
 Authorization: Bearer <token>
@@ -799,6 +824,8 @@ Authorization: Bearer <token>
 ---
 
 ### Get application status
+
+`GET` · **User**
 
 ```http
 GET /api/application/status
@@ -822,17 +849,17 @@ Authorization: Bearer <token>
 
 ## Scheme Applications
 
-Base path: `/api/scheme-applications`
+**Base path:** `/api/scheme-applications`
 
 ### Submit scheme application
+
+`POST` · **Private** (user only)
 
 ```http
 POST /api/scheme-applications
 Authorization: Bearer <token>
 Content-Type: multipart/form-data
 ```
-
-**Access:** Private (user only)
 
 **Request Body:** Form data
 
@@ -860,12 +887,12 @@ Content-Type: multipart/form-data
 
 ### Get my scheme applications
 
+`GET` · **Private** (user only)
+
 ```http
 GET /api/scheme-applications/my-applications
 Authorization: Bearer <token>
 ```
-
-**Access:** Private (user only)
 
 **Response:** `200 OK`
 
@@ -873,12 +900,12 @@ Authorization: Bearer <token>
 
 ### Check if applied to scheme
 
+`GET` · **Private** (user only)
+
 ```http
 GET /api/scheme-applications/check/:schemeId
 Authorization: Bearer <token>
 ```
-
-**Access:** Private (user only)
 
 **Response:** `200 OK`
 
@@ -894,12 +921,12 @@ Authorization: Bearer <token>
 
 ### Get applications for scheme
 
+`GET` · **Private** (organizer, admin) — organizers see only their schemes
+
 ```http
 GET /api/scheme-applications/scheme/:schemeId
 Authorization: Bearer <token>
 ```
-
-**Access:** Private (organizer, admin). Organizers can only view their own schemes.
 
 **Response:** `200 OK`
 
@@ -907,12 +934,14 @@ Authorization: Bearer <token>
 
 ### Get all applications (Admin)
 
+`GET` · **Admin**
+
+**Query params:** `status`, `schemeId` (optional)
+
 ```http
 GET /api/scheme-applications?status=pending&schemeId=...
 Authorization: Bearer <token>
 ```
-
-**Access:** Private (admin only)
 
 **Query params:** `status`, `schemeId` (optional)
 
@@ -922,12 +951,12 @@ Authorization: Bearer <token>
 
 ### Approve application
 
+`PATCH` · **Organizer / Admin**
+
 ```http
 PATCH /api/scheme-applications/:id/approve
 Authorization: Bearer <token>
 ```
-
-**Access:** Private (organizer, admin)
 
 **Response:** `200 OK`
 
@@ -935,13 +964,13 @@ Authorization: Bearer <token>
 
 ### Reject application
 
+`PATCH` · **Organizer / Admin**
+
 ```http
 PATCH /api/scheme-applications/:id/reject
 Authorization: Bearer <token>
 Content-Type: application/json
 ```
-
-**Access:** Private (organizer, admin)
 
 **Request Body:**
 
@@ -957,11 +986,11 @@ Content-Type: application/json
 
 ## Support Queries
 
-Base path: `/api/support-queries`
-
-**Access:** All routes require `user`, `organizer`, or `admin`. Users/organizers see only their own; admins see all.
+**Base path:** `/api/support-queries` · User/Organizer/Admin; users and organizers see only their own; admins see all.
 
 ### Create query
+
+`POST` · **User / Organizer / Admin**
 
 ```http
 POST /api/support-queries
@@ -984,18 +1013,22 @@ Content-Type: application/json
 
 ### Get queries
 
+`GET` · **User / Organizer / Admin**
+
+**Query params:** `status` (optional) — `open`, `resolved`
+
 ```http
 GET /api/support-queries?status=open
 Authorization: Bearer <token>
 ```
-
-**Query params:** `status` (optional) — `open`, `resolved`
 
 **Response:** `200 OK`
 
 ---
 
 ### Get query by ID
+
+`GET` · **User / Organizer / Admin**
 
 ```http
 GET /api/support-queries/:id
@@ -1007,6 +1040,8 @@ Authorization: Bearer <token>
 ---
 
 ### Send message
+
+`POST` · **User / Organizer / Admin**
 
 ```http
 POST /api/support-queries/:id/messages
@@ -1028,12 +1063,12 @@ Content-Type: application/json
 
 ### Resolve query
 
+`PATCH` · **Admin**
+
 ```http
 PATCH /api/support-queries/:id/resolve
 Authorization: Bearer <token>
 ```
-
-**Access:** Admin only
 
 **Response:** `200 OK`
 
@@ -1041,11 +1076,11 @@ Authorization: Bearer <token>
 
 ## AI
 
-Base path: `/api/ai`
-
-**Access:** All routes require `organizer` role.
+**Base path:** `/api/ai` · All routes require **organizer** role.
 
 ### Generate scheme draft
+
+`POST` · **Organizer**
 
 ```http
 POST /api/ai/generate-scheme
@@ -1083,13 +1118,13 @@ Content-Type: application/json
 }
 ```
 
-**Note:** Requires `GOOGLE_GENERATIVE_AI_API_KEY` in environment.
+> **Note:** Requires `GOOGLE_GENERATIVE_AI_API_KEY` in environment.
 
 ---
 
 ## Error Responses
 
-All errors follow this format:
+All API errors use this structure:
 
 ```json
 {
@@ -1098,13 +1133,13 @@ All errors follow this format:
 }
 ```
 
-| Status | Description |
-|--------|-------------|
-| 400 | Bad Request — Invalid input |
-| 401 | Unauthorized — Missing or invalid token |
-| 403 | Forbidden — Insufficient permissions |
-| 404 | Not Found — Resource not found |
-| 500 | Server Error — Internal error |
+| Code | Meaning |
+|------|---------|
+| `400` | Bad Request — Invalid input |
+| `401` | Unauthorized — Missing or invalid token |
+| `403` | Forbidden — Insufficient permissions |
+| `404` | Not Found — Resource not found |
+| `500` | Server Error — Internal error |
 
 ---
 
