@@ -84,12 +84,23 @@ const Profile = () => {
     }
   }, [user]);
 
+  const getAgeFromDateOfBirth = (dateStr) => {
+    if (!dateStr) return '';
+    const birth = new Date(dateStr);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age >= 0 ? String(age) : '';
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value,
-    });
+    const updates = { [name]: type === 'checkbox' ? checked : value };
+    if (name === 'dateOfBirth') {
+      updates.age = getAgeFromDateOfBirth(value);
+    }
+    setFormData({ ...formData, ...updates });
   };
 
   const fetchPincodeDetails = async () => {
@@ -351,7 +362,7 @@ const Profile = () => {
               </div>
 
               <div>
-                <label className="label">Age</label>
+                <label className="label">Age {formData.dateOfBirth && <span className="text-gov-500 font-normal">(from DOB)</span>}</label>
                 <input
                   type="number"
                   name="age"
@@ -360,7 +371,7 @@ const Profile = () => {
                   className="input"
                   min="0"
                   max="150"
-                  placeholder="Enter your age"
+                  placeholder={formData.dateOfBirth ? '' : 'Enter age or pick DOB above'}
                 />
               </div>
 
